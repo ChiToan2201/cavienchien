@@ -1,0 +1,1791 @@
+import Phaser from 'phaser';
+import { INITIAL_FOODS, FoodDefinition } from '../data/foods';
+import { GameStateManager } from '../managers/GameStateManager';
+import { SoundManager } from '../managers/SoundManager';
+import { CookingSystem } from '../systems/CookingSystem';
+import { CustomerSystem, ActiveCustomer } from '../systems/CustomerSystem';
+import { DaySystem } from '../systems/DaySystem';
+import { EconomySystem } from '../systems/EconomySystem';
+import { InventorySystem } from '../systems/InventorySystem';
+import { HUD } from '../ui/HUD';
+import { FoodTray } from '../ui/FoodTray';
+import { CustomerOrder } from '../ui/CustomerOrder';
+import { Player } from '../entities/Player';
+import { ModalTab } from './ModalScene';
+import { TASTE_THEME } from '../config/tasteTheme';
+
+interface FryerSlotUI {
+  container: Phaser.GameObjects.Container;
+  bg: Phaser.GameObjects.Graphics;
+  foodIcon: Phaser.GameObjects.Image;
+  statusText: Phaser.GameObjects.Text;
+  progressFill: Phaser.GameObjects.Graphics;
+  bubbleEmitter: Phaser.GameObjects.Graphics;
+  slotW: number;
+  slotH: number;
+  baseY: number;
+}
+
+export class ShopScene extends Phaser.Scene {
+  private gs!: GameStateManager;
+  public cookingSystem!: CookingSystem;
+  public customerSystem!: CustomerSystem;
+  public daySystem!: DaySystem;
+  public economySystem!: EconomySystem;
+  public inventorySystem!: InventorySystem;
+
+  private hud!: HUD;
+  private player!: Player;
+  private trays: Map<string, FoodTray> = new Map();
+  private customerViews: Map<number, CustomerOrder> = new Map();
+  private fryerUIs: FryerSlotUI[] = [];
+
+  private gasFillBar!: Phaser.GameObjects.Graphics;
+  private gasPercentText!: Phaser.GameObjects.Text;
+  private gasRefillBtnLbl!: Phaser.GameObjects.Text;
+  private primaryQuickBtnTxt!: Phaser.GameObjects.Text;
+  private secondaryQuickBtnTxt!: Phaser.GameObjects.Text;
+  private todayRevenueText!: Phaser.GameObjects.Text;
+  private bubblePhase = 0;
+  private isDesktop = false;
+  private endDayPending = false;
+
+  constructor() {
+    super('ShopScene');
+  }
+
+  public create(): void {
+    this.gs = GameStateManager.getInstance();
+    this.cookingSystem = new CookingSystem();
+    this.customerSystem = new CustomerSystem();
+    this.daySystem = new DaySystem();
+    this.economySystem = new EconomySystem();
+    this.inventorySystem = new InventorySystem();
+
+    this.trays.clear();
+    this.customerViews.clear();
+    this.fryerUIs = [];
+
+    const W = this.scale.width;
+    const H = this.scale.height;
+    this.isDesktop = W >= 900;
+
+    // 1. Environment Background (Desktop Widescreen or Mobile Portrait)
+    if (this.isDesktop) {
+      this.buildDesktopEnvironment(W, H);
+    } else {
+      this.buildMobileEnvironment(W, H);
+    }
+
+    // 2. Top HUD Bar
+    this.hud = new HUD(
+      this,
+      () => this.openModal('settings'),
+      () => this.openModal('daily_result')
+    );
+    this.add.existing(this.hud);
+
+    // 3. Customer Queue, Chef & Full Condiment Counter Ledge
+    this.buildCustomerAndChefZone();
+
+    // 4. 12 Food Trays Glass Showcase Grid (3 Columns x 4 Rows)
+    this.buildTwelveTraysGrid();
+
+    // 5. Industrial Cooking Station (Gas Tank + Fryer Baskets + Quick Actions)
+    this.buildCookingStation();
+
+    // 6. Cohesive Bottom Navigation Bar (`taste-skill` one button system, zero purple)
+    this.buildBottomNavBar();
+
+    // 7. Wire up System Events & Desktop Keyboard Shortcuts
+    this.bindEvents();
+    this.setupKeyboardShortcuts();
+
+    // Start in Pre-Day Preparation ("Trước giờ mở bán là lúc nhập hàng")
+    this.enterPrepForDay(false);
+  }
+
+  /**
+   * Desktop 12-Column Grid Environment (`layout-v4.md` Equal Outer Edges):
+   * - Outer Gutter `--gut = 20px`: Left edge = `20`, Right edge = `1260` (`1280 - 20`).
+   * - Top HUD: `y: 0..64`
+   * - Left Column (`x: 20..704`, width `684`):
+   *   - Street Service Counter: `y: 78..304` (height `226`)
+   *   - Industrial Fryer & Gas Station: `y: 318..644` (height `326`)
+   * - Right Column (`x: 718..1260`, width `542`):
+   *   - 12-Tray Glass Showcase Cabinet: `y: 78..644` (height `566`)
+   * - Bottom Navigation Bar: `y: 658..720` (height `62`)
+   */
+  private buildDesktopEnvironment(W: number, H: number): void {
+    const bg = this.add.graphics();
+    const gut = TASTE_THEME.layout.desktop.gutter; // 20px
+    const leftX = gut;
+    const leftW = 684;
+    const rightX = 718;
+    const rightW = W - gut - rightX; // 542px
+
+    // Base warm espresso backdrop
+    bg.fillGradientStyle(
+      TASTE_THEME.colors.bgBase,
+      TASTE_THEME.colors.bgBase,
+      TASTE_THEME.colors.bgElevated,
+      TASTE_THEME.colors.bgElevated,
+      1
+    );
+    bg.fillRect(0, 0, W, H);
+
+    // === LEFT TOP CARD: Street Service Counter (`y: 78..304`) ===
+    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+    bg.fillRoundedRect(leftX, 78, leftW, 226, 14);
+    // Warm street evening glow inside the counter bay
+    bg.fillStyle(0xf59e0b, 0.08);
+    bg.fillRoundedRect(leftX + 2, 96, leftW - 4, 174, 12);
+
+    // Crisp red-and-white Vietnamese street cart awning scalloped roof
+    const stripeCount = 14;
+    const stripeW = leftW / stripeCount;
+    for (let i = 0; i < stripeCount; i++) {
+      const sx = leftX + i * stripeW;
+      const isRed = i % 2 === 0;
+      bg.fillStyle(isRed ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.cardCream, 1);
+      bg.fillRect(sx, 78, stripeW, 16);
+      bg.fillCircle(sx + stripeW / 2, 94, stripeW / 2);
+    }
+
+    // Warm wooden counter ledge at the bottom of the customer bay (`y: 268..304`)
+    bg.fillStyle(TASTE_THEME.colors.woodMid, 1);
+    bg.fillRoundedRect(leftX, 270, leftW, 34, { tl: 4, tr: 4, bl: 14, br: 14 });
+    bg.fillStyle(TASTE_THEME.colors.woodLight, 0.45);
+    bg.fillRect(leftX + 4, 272, leftW - 8, 6);
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(leftX, 78, leftW, 226, 14);
+
+    // === LEFT BOTTOM CARD: Industrial Cooking Station (`y: 318..644`) ===
+    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+    bg.fillRoundedRect(leftX, 318, leftW, 326, 14);
+    // Stainless steel recessed workspace
+    bg.fillStyle(TASTE_THEME.colors.steelDeep, 0.9);
+    bg.fillRoundedRect(leftX + 10, 356, leftW - 20, 278, 10);
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(leftX, 318, leftW, 326, 14);
+
+    // Clean Section Header (`layout-v4.md`: concise title + right-aligned muted hint)
+    this.add.text(leftX + 16, 330, '🔥 BẾP CHIÊN & TRẠM GAS', {
+      fontFamily: TASTE_THEME.fonts.sans,
+      fontSize: '13px',
+      fontStyle: '800',
+      color: TASTE_THEME.colors.inkOnDark,
+    });
+    this.add
+      .text(leftX + leftW - 16, 331, 'Chạm rổ hoặc nhấn [Space] để vớt nhanh', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '11.5px',
+        fontStyle: '600',
+        color: TASTE_THEME.colors.inkMutedOnDark,
+      })
+      .setOrigin(1, 0);
+
+    // === RIGHT CARD: 12 Food Trays Glass Showcase Counter (`x: 718..1260, y: 78..644`) ===
+    bg.fillStyle(TASTE_THEME.colors.bgGlassShowcase, 1);
+    bg.fillRoundedRect(rightX, 78, rightW, 566, 14);
+    // Warm wooden cabinet trim at top and bottom of glass showcase
+    bg.fillStyle(TASTE_THEME.colors.woodDark, 0.65);
+    bg.fillRoundedRect(rightX, 78, rightW, 44, { tl: 14, tr: 14, bl: 0, br: 0 });
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(rightX, 78, rightW, 566, 14);
+    bg.lineBetween(rightX, 122, rightX + rightW, 122);
+
+    this.add.text(rightX + 18, 92, '🍱 TỦ KHAY ĐỒ CHIÊN (12 MÓN)', {
+      fontFamily: TASTE_THEME.fonts.sans,
+      fontSize: '13px',
+      fontStyle: '800',
+      color: TASTE_THEME.colors.inkGold,
+    });
+    this.add
+      .text(rightX + rightW - 18, 93, 'Chạm khay để chiên / Mở khóa', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '11.5px',
+        fontStyle: '600',
+        color: TASTE_THEME.colors.inkMutedOnDark,
+      })
+      .setOrigin(1, 0);
+  }
+
+  /**
+   * Mobile Portrait Environment (`420x780`) with strict `12px` outer gutter (`x: 12..408`):
+   * - Top HUD: `y: 0..58`
+   * - Street Customer & Chef Zone: `y: 66..230`
+   * - 12-Tray Showcase Cabinet: `y: 238..544`
+   * - Industrial Cooking Station: `y: 552..714`
+   * - Bottom Navigation Bar: `y: 722..780`
+   */
+  private buildMobileEnvironment(W: number, H: number): void {
+    const bg = this.add.graphics();
+    const gut = TASTE_THEME.layout.mobile.gutter; // 12px
+    const cardW = W - gut * 2; // 396px
+
+    bg.fillGradientStyle(
+      TASTE_THEME.colors.bgBase,
+      TASTE_THEME.colors.bgBase,
+      TASTE_THEME.colors.bgElevated,
+      TASTE_THEME.colors.bgElevated,
+      1
+    );
+    bg.fillRect(0, 0, W, H);
+
+    // 1. Customer & Awning Card (`y: 66..230`)
+    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+    bg.fillRoundedRect(gut, 66, cardW, 164, 12);
+
+    const stripeCount = 10;
+    const stripeW = cardW / stripeCount;
+    for (let i = 0; i < stripeCount; i++) {
+      const sx = gut + i * stripeW;
+      bg.fillStyle(
+        i % 2 === 0 ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.cardCream,
+        1
+      );
+      bg.fillRect(sx, 66, stripeW, 14);
+      bg.fillCircle(sx + stripeW / 2, 80, stripeW / 2);
+    }
+
+    // Wooden counter ledge
+    bg.fillStyle(TASTE_THEME.colors.woodMid, 1);
+    bg.fillRoundedRect(gut, 206, cardW, 24, { tl: 3, tr: 3, bl: 12, br: 12 });
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(gut, 66, cardW, 164, 12);
+
+    // 2. 12-Tray Showcase Card (`y: 238..544`)
+    bg.fillStyle(TASTE_THEME.colors.bgGlassShowcase, 1);
+    bg.fillRoundedRect(gut, 238, cardW, 306, 12);
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(gut, 238, cardW, 306, 12);
+
+    // 3. Cooking Station Card (`y: 552..714`)
+    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+    bg.fillRoundedRect(gut, 552, cardW, 162, 12);
+    bg.fillStyle(TASTE_THEME.colors.steelDeep, 0.9);
+    bg.fillRoundedRect(gut + 6, 574, cardW - 12, 134, 9);
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(gut, 552, cardW, 162, 12);
+  }
+
+  private buildCustomerAndChefZone(): void {
+    if (this.isDesktop) {
+      // Chef standing on the left of the wooden service counter
+      this.player = new Player(this, 88, 224);
+      this.player.setScale(1.12);
+      this.add.existing(this.player);
+
+      // Arrange all 12 SpriteForge-keyed sauces, bowls, shakers & toppings along the wooden counter ledge!
+      const counterProps: Array<{ key: string; x: number; y: number; scale: number }> = [
+        { key: 'prop_chai_tuong_ot', x: 38, y: 282, scale: 0.25 },
+        { key: 'prop_chai_tuong_den', x: 60, y: 282, scale: 0.25 },
+        { key: 'prop_lo_muoi', x: 124, y: 284, scale: 0.2 },
+        { key: 'prop_lo_tieu', x: 142, y: 284, scale: 0.2 },
+        { key: 'prop_bat_tuong_ot', x: 168, y: 285, scale: 0.22 },
+        { key: 'prop_bat_tuong_den', x: 194, y: 285, scale: 0.22 },
+        { key: 'prop_bat_sot_me', x: 220, y: 285, scale: 0.22 },
+        { key: 'prop_dua_leo', x: 584, y: 284, scale: 0.24 },
+        { key: 'prop_rau_ram', x: 612, y: 284, scale: 0.24 },
+        { key: 'prop_topping_tac', x: 638, y: 285, scale: 0.21 },
+        { key: 'prop_topping_ot', x: 662, y: 285, scale: 0.21 },
+        { key: 'prop_topping_hanh', x: 684, y: 285, scale: 0.21 },
+      ];
+
+      for (const p of counterProps) {
+        if (this.textures.exists(p.key)) {
+          this.add.image(p.x, p.y, p.key).setOrigin(0.5, 1).setScale(p.scale);
+        }
+      }
+
+      // Today's revenue chalkboard pill (Top-Left of Street Counter)
+      const board = this.add.graphics();
+      board.fillStyle(TASTE_THEME.colors.bgBase, 0.92);
+      board.fillRoundedRect(32, 108, 126, 52, 8);
+      board.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      board.strokeRoundedRect(32, 108, 126, 52, 8);
+
+      this.add
+        .text(95, 122, 'DOANH THU NGÀY', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '700',
+          color: TASTE_THEME.colors.inkMutedOnDark,
+        })
+        .setOrigin(0.5);
+
+      this.todayRevenueText = this.add
+        .text(95, 142, '0đ', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '15px',
+          fontStyle: '800',
+          color: '#4ade80',
+        })
+        .setOrigin(0.5);
+    } else {
+      this.player = new Player(this, 48, 178);
+      this.add.existing(this.player);
+
+      const mobileProps: Array<{ key: string; x: number; y: number; scale: number }> = [
+        { key: 'prop_chai_tuong_ot', x: 26, y: 216, scale: 0.19 },
+        { key: 'prop_chai_tuong_den', x: 42, y: 216, scale: 0.19 },
+        { key: 'prop_bat_sot_me', x: 62, y: 218, scale: 0.17 },
+        { key: 'prop_dua_leo', x: 82, y: 218, scale: 0.18 },
+        { key: 'prop_rau_ram', x: 374, y: 218, scale: 0.18 },
+        { key: 'prop_topping_tac', x: 394, y: 218, scale: 0.17 },
+      ];
+      for (const p of mobileProps) {
+        if (this.textures.exists(p.key)) {
+          this.add.image(p.x, p.y, p.key).setOrigin(0.5, 1).setScale(p.scale);
+        }
+      }
+
+      const board = this.add.graphics();
+      board.fillStyle(TASTE_THEME.colors.bgBase, 0.92);
+      board.fillRoundedRect(18, 90, 76, 40, 6);
+      board.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      board.strokeRoundedRect(18, 90, 76, 40, 6);
+
+      this.add
+        .text(56, 101, 'DOANH THU', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8.5px',
+          fontStyle: '700',
+          color: TASTE_THEME.colors.inkMutedOnDark,
+        })
+        .setOrigin(0.5);
+
+      this.todayRevenueText = this.add
+        .text(56, 117, '0đ', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '11.5px',
+          fontStyle: '800',
+          color: '#4ade80',
+        })
+        .setOrigin(0.5);
+    }
+  }
+
+  private buildTwelveTraysGrid(): void {
+    const cols = 3;
+    if (this.isDesktop) {
+      // Desktop Right Showcase (`x: 718..1260`, width `542`, `y: 122..644`)
+      const trayW = 162;
+      const trayH = 114;
+      const gapX = 12;
+      const gapY = 11;
+
+      const totalGridW = cols * trayW + (cols - 1) * gapX; // 510px
+      const panelCenterX = 718 + 542 / 2; // 989
+      const startX = panelCenterX - totalGridW / 2 + trayW / 2;
+      const startY = 191;
+
+      INITIAL_FOODS.forEach((foodDef, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const x = startX + col * (trayW + gapX);
+        const y = startY + row * (trayH + gapY);
+
+        const tray = new FoodTray(this, x, y, trayW, trayH, foodDef, (clickedFood) => {
+          this.onFoodTrayTapped(clickedFood);
+        });
+        this.add.existing(tray);
+        this.trays.set(foodDef.id, tray);
+      });
+    } else {
+      // Mobile Portrait 3x4 Grid (`x: 12..408`, width `396`, `y: 238..544`)
+      const trayW = 122;
+      const trayH = 68;
+      const gapX = 7;
+      const gapY = 6;
+
+      const totalGridW = cols * trayW + (cols - 1) * gapX; // 380px
+      const startX = (this.scale.width - totalGridW) / 2 + trayW / 2;
+      const startY = 280;
+
+      INITIAL_FOODS.forEach((foodDef, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const x = startX + col * (trayW + gapX);
+        const y = startY + row * (trayH + gapY);
+
+        const tray = new FoodTray(this, x, y, trayW, trayH, foodDef, (clickedFood) => {
+          this.onFoodTrayTapped(clickedFood);
+        });
+        this.add.existing(tray);
+        this.trays.set(foodDef.id, tray);
+      });
+    }
+  }
+
+  private buildCookingStation(): void {
+    if (this.isDesktop) {
+      // Left: Registered Gas Tank Widget (`x: 88, y: 494`)
+      const gasCon = this.add.container(88, 494);
+      const gasPanel = this.add.graphics();
+      gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      gasPanel.fillRoundedRect(-50, -124, 100, 248, 10);
+      gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      gasPanel.strokeRoundedRect(-50, -124, 100, 248, 10);
+      gasCon.add(gasPanel);
+
+      if (this.textures.exists('equip_gas_tank')) {
+        // Processed by SpriteForgeProcessor to 200x260 without border bars!
+        const gasImg = this.add.image(0, -34, 'equip_gas_tank').setScale(0.46);
+        gasCon.add(gasImg);
+      }
+
+      this.gasFillBar = this.add.graphics();
+      gasCon.add(this.gasFillBar);
+
+      this.gasPercentText = this.add
+        .text(0, 52, 'Gas: 100%', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '12.5px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkOnDark,
+        })
+        .setOrigin(0.5);
+      gasCon.add(this.gasPercentText);
+
+      const refillBtnBg = this.add.graphics();
+      refillBtnBg.fillStyle(TASTE_THEME.colors.accentAmber, 1);
+      refillBtnBg.fillRoundedRect(-40, 74, 80, 28, 6);
+      this.gasRefillBtnLbl = this.add
+        .text(0, 88, '+ ĐỔI GAS [G]', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '10.5px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      gasCon.add([refillBtnBg, this.gasRefillBtnLbl]);
+
+      const gasHit = this.add
+        .rectangle(0, 0, 100, 248, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      gasHit.on('pointerdown', () => this.triggerRefillGas());
+      gasCon.add(gasHit);
+      this.refreshGasUI();
+
+      // Center: 2x2 Grid of Fryer Baskets (`x: 152..526, y: 370..618`)
+      const slotW = 176;
+      const slotH = 116;
+      const slotStartX = 242;
+      const slotStartY = 430;
+
+      for (let i = 0; i < 4; i++) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const sx = slotStartX + col * (slotW + 14);
+        const sy = slotStartY + row * (slotH + 16);
+
+        const slotCon = this.add.container(sx, sy);
+        const bg = this.add.graphics();
+        const bubbleEmitter = this.add.graphics();
+        const foodIcon = this.add
+          .image(-48, 0, 'food_ca_vien_truyen_thong')
+          .setScale(0.24)
+          .setVisible(false);
+        const statusText = this.add
+          .text(16, -12, '', {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '12.5px',
+            fontStyle: '700',
+            color: TASTE_THEME.colors.inkOnDark,
+            align: 'center',
+            lineSpacing: 3,
+          })
+          .setOrigin(0.5);
+        const progressFill = this.add.graphics();
+
+        const hit = this.add
+          .rectangle(0, 0, slotW, slotH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerover', () => {
+          this.tweens.add({
+            targets: slotCon,
+            y: sy - 2,
+            duration: TASTE_THEME.motion.fast,
+            ease: TASTE_THEME.motion.easeOut,
+          });
+        });
+        hit.on('pointerout', () => {
+          this.tweens.add({
+            targets: slotCon,
+            y: sy,
+            duration: TASTE_THEME.motion.fast,
+            ease: TASTE_THEME.motion.easeOut,
+          });
+        });
+        hit.on('pointerdown', () => this.onFryerSlotTapped(i));
+
+        slotCon.add([bg, bubbleEmitter, foodIcon, statusText, progressFill, hit]);
+        this.fryerUIs.push({
+          container: slotCon,
+          bg,
+          foodIcon,
+          statusText,
+          progressFill,
+          bubbleEmitter,
+          slotW,
+          slotH,
+          baseY: sy,
+        });
+        this.refreshFryerSlotUI(i);
+      }
+
+      // Right of Kitchen Panel: 2 Quick Action Cards aligned to the right edge of the left column
+      this.primaryQuickBtnTxt = this.createStationQuickButton(
+        612,
+        430,
+        146,
+        116,
+        '🌅 MỞ BÁN NGAY\n[Phím Space]',
+        TASTE_THEME.colors.success,
+        () => this.onPrimaryQuickAction()
+      );
+
+      this.secondaryQuickBtnTxt = this.createStationQuickButton(
+        612,
+        562,
+        146,
+        116,
+        '📦 NHẬP ĐẦY KHO\n[Phím R]',
+        TASTE_THEME.colors.accentPrimary,
+        () => this.onSecondaryQuickAction()
+      );
+    } else {
+      // Mobile Cooking Station (`x: 12..408, y: 552..714`)
+      this.add.text(22, 557, '🔥 TRẠM BẾP CHIÊN & GAS', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10.5px',
+        fontStyle: '800',
+        color: TASTE_THEME.colors.inkGold,
+      });
+
+      const gasCon = this.add.container(52, 641);
+      const gasPanel = this.add.graphics();
+      gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      gasPanel.fillRoundedRect(-32, -60, 64, 120, 8);
+      gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      gasPanel.strokeRoundedRect(-32, -60, 64, 120, 8);
+      gasCon.add(gasPanel);
+
+      if (this.textures.exists('equip_gas_tank')) {
+        const gasImg = this.add.image(0, -18, 'equip_gas_tank').setScale(0.26);
+        gasCon.add(gasImg);
+      }
+
+      this.gasFillBar = this.add.graphics();
+      gasCon.add(this.gasFillBar);
+
+      this.gasPercentText = this.add
+        .text(0, 26, 'Gas: 100%', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkOnDark,
+        })
+        .setOrigin(0.5);
+      gasCon.add(this.gasPercentText);
+
+      this.gasRefillBtnLbl = this.add
+        .text(0, 44, '+ ĐỔI GAS', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9px',
+          fontStyle: '800',
+          color: '#ffffff',
+          backgroundColor: '#d97706',
+          padding: { left: 5, right: 5, top: 2, bottom: 2 },
+        })
+        .setOrigin(0.5);
+      gasCon.add(this.gasRefillBtnLbl);
+
+      const gasHit = this.add
+        .rectangle(0, 0, 64, 120, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      gasHit.on('pointerdown', () => this.triggerRefillGas());
+      gasCon.add(gasHit);
+      this.refreshGasUI();
+
+      const slotW = 106;
+      const slotH = 56;
+      const slotStartX = 144;
+      const slotStartY = 609;
+
+      for (let i = 0; i < 4; i++) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const sx = slotStartX + col * (slotW + 6);
+        const sy = slotStartY + row * (slotH + 8);
+
+        const slotCon = this.add.container(sx, sy);
+        const bg = this.add.graphics();
+        const bubbleEmitter = this.add.graphics();
+        const foodIcon = this.add
+          .image(-30, 0, 'food_ca_vien_truyen_thong')
+          .setScale(0.15)
+          .setVisible(false);
+        const statusText = this.add
+          .text(10, -7, '', {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '9.5px',
+            fontStyle: '700',
+            color: TASTE_THEME.colors.inkOnDark,
+            align: 'center',
+          })
+          .setOrigin(0.5);
+        const progressFill = this.add.graphics();
+
+        const hit = this.add
+          .rectangle(0, 0, slotW, slotH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerdown', () => this.onFryerSlotTapped(i));
+
+        slotCon.add([bg, bubbleEmitter, foodIcon, statusText, progressFill, hit]);
+        this.fryerUIs.push({
+          container: slotCon,
+          bg,
+          foodIcon,
+          statusText,
+          progressFill,
+          bubbleEmitter,
+          slotW,
+          slotH,
+          baseY: sy,
+        });
+        this.refreshFryerSlotUI(i);
+      }
+
+      this.primaryQuickBtnTxt = this.createStationQuickButton(
+        358,
+        609,
+        84,
+        56,
+        '🌅 MỞ BÁN\nNGAY',
+        TASTE_THEME.colors.success,
+        () => this.onPrimaryQuickAction()
+      );
+
+      this.secondaryQuickBtnTxt = this.createStationQuickButton(
+        358,
+        673,
+        84,
+        56,
+        '📦 NHẬP ĐẦY\nKHO',
+        TASTE_THEME.colors.accentPrimary,
+        () => this.onSecondaryQuickAction()
+      );
+    }
+  }
+
+  public enterPrepForDay(advanceDay = false): void {
+    this.endDayPending = false;
+    this.cookingSystem.resetAllSlots();
+    this.customerSystem.resetAll();
+    this.customerViews.forEach((v) => v.destroy());
+    this.customerViews.clear();
+
+    if (advanceDay) {
+      this.daySystem.advanceToNextDay();
+    } else {
+      this.daySystem.enterPrepPhase(false);
+    }
+
+    const assisted = this.gs.ensureMinimumPrepCapital();
+    this.refreshActionButtonsForPhase();
+    this.refreshGasUI();
+    this.refreshAllTraysAndCustomers();
+    for (let i = 0; i < 4; i++) {
+      this.refreshFryerSlotUI(i);
+    }
+
+    // Automatically open Pre-Day Inventory/Restock screen ("Trước ngày mở bán là lúc nhập hàng")
+    this.openModal('inventory');
+
+    if (assisted) {
+      this.showToast(
+        '💡 Quán được hỗ trợ nguyên liệu & Gas khởi nghiệp đầu ngày!',
+        TASTE_THEME.colors.infoTeal
+      );
+    }
+  }
+
+  public startSellingDayFromPrep(): boolean {
+    if (this.daySystem.phase === 'selling') return true;
+
+    if (!this.gs.hasEnoughGasToCook()) {
+      SoundManager.playError();
+      this.showToast(
+        '⛽ Bình Gas đã cạn! Hãy bơm đầy Gas trước giờ mở bán!',
+        TASTE_THEME.colors.danger
+      );
+      this.openModal('inventory');
+      return false;
+    }
+
+    if (!this.gs.hasCookableRawStock()) {
+      SoundManager.playError();
+      this.showToast(
+        '📦 Kho nguyên liệu đang trống! Hãy nhập hàng trước giờ mở bán!',
+        TASTE_THEME.colors.danger
+      );
+      this.openModal('inventory');
+      return false;
+    }
+
+    if (this.scene.isActive('ModalScene')) {
+      this.scene.stop('ModalScene');
+    }
+
+    this.endDayPending = false;
+    this.daySystem.startSellingDay();
+    this.refreshActionButtonsForPhase();
+    this.refreshGasUI();
+    this.refreshAllTraysAndCustomers();
+
+    SoundManager.playCash();
+    this.player.playCheer(`Mở bán Ngày ${this.gs.state.day}!`);
+    this.showToast(
+      `🌅 Đã mở bán Ngày ${this.gs.state.day}! (Tối đa 6 phút • Kết thúc khi hết Gas hoặc hết Kho)`,
+      TASTE_THEME.colors.success
+    );
+
+    this.time.delayedCall(400, () => {
+      if (this.daySystem.phase === 'selling' && this.daySystem.isRunning) {
+        this.customerSystem.trySpawnCustomer();
+      }
+    });
+    return true;
+  }
+
+  private refreshActionButtonsForPhase(): void {
+    const isPrep = this.daySystem.phase === 'prep';
+    if (this.primaryQuickBtnTxt) {
+      this.primaryQuickBtnTxt.setText(
+        this.isDesktop
+          ? isPrep
+            ? '🌅 MỞ BÁN NGAY\n[Phím Space]'
+            : '🛎️ PHỤC VỤ NGAY\n[Phím Space]'
+          : isPrep
+            ? '🌅 MỞ BÁN\nNGAY'
+            : '🛎️ PHỤC VỤ\nNGAY'
+      );
+    }
+    if (this.secondaryQuickBtnTxt) {
+      this.secondaryQuickBtnTxt.setText(
+        this.isDesktop
+          ? isPrep
+            ? '📦 NHẬP ĐẦY KHO\n[Phím R]'
+            : '📊 TỔNG KẾT\n& NGHỈ SỚM'
+          : isPrep
+            ? '📦 NHẬP ĐẦY\nKHO'
+            : '📊 BÁO CÁO\nNGÀY'
+      );
+    }
+    if (this.gasRefillBtnLbl) {
+      this.gasRefillBtnLbl.setText(
+        this.isDesktop
+          ? isPrep
+            ? '+ ĐỔI GAS [G]'
+            : '🔒 CHỜ MỞ BÁN'
+          : isPrep
+            ? '+ ĐỔI GAS'
+            : '🔒 ĐANG BÁN'
+      );
+    }
+  }
+
+  private onPrimaryQuickAction(): void {
+    if (this.daySystem.phase === 'prep') {
+      this.startSellingDayFromPrep();
+    } else {
+      this.serveFirstReadyCustomer();
+    }
+  }
+
+  private onSecondaryQuickAction(): void {
+    if (this.daySystem.phase === 'prep') {
+      this.triggerRestockAll();
+    } else {
+      this.openModal('daily_result');
+    }
+  }
+
+  private triggerRefillGas(): void {
+    if (this.daySystem.phase !== 'prep') {
+      SoundManager.playError();
+      this.showToast(
+        '🔒 Đang mở bán! Chỉ được đổi bình Gas trước giờ mở bán!',
+        TASTE_THEME.colors.accentAmber
+      );
+      return;
+    }
+
+    const res = this.gs.refillGas();
+    if (!res.ok && res.reason) {
+      this.showToast(res.reason, TASTE_THEME.colors.danger);
+    } else {
+      this.showToast('⛽ Đã bơm đầy bình Gas chuẩn bị mở bán!', TASTE_THEME.colors.success);
+      this.refreshGasUI();
+    }
+  }
+
+  private triggerRestockAll(): void {
+    if (this.daySystem.phase !== 'prep') {
+      SoundManager.playError();
+      this.showToast(
+        '🔒 Đang mở bán! Chỉ được nhập hàng vào Kho trước giờ mở bán!',
+        TASTE_THEME.colors.accentAmber
+      );
+      return;
+    }
+
+    const res = this.inventorySystem.restockAllLowFoods();
+    if (res.restockedCount > 0) {
+      SoundManager.playCash();
+      this.showToast(
+        `Đã nhập thêm ${res.restockedCount} lô hàng (-${this.gs.formatCurrency(res.totalSpent)})`,
+        TASTE_THEME.colors.success
+      );
+    } else {
+      SoundManager.playPop();
+      this.showToast(
+        'Kho đông lạnh đã đầy hoặc chưa đủ tiền!',
+        TASTE_THEME.colors.accentAmber
+      );
+    }
+  }
+
+  private setupKeyboardShortcuts(): void {
+    if (!this.input.keyboard) return;
+
+    this.input.keyboard.on('keydown-SPACE', () => {
+      if (this.daySystem.isPaused) return;
+      if (this.daySystem.phase === 'prep') {
+        this.startSellingDayFromPrep();
+        return;
+      }
+      const readySlot = this.cookingSystem.slots.find((s) => s.status === 'ready');
+      if (readySlot) {
+        this.onFryerSlotTapped(readySlot.index);
+        return;
+      }
+      const burnedSlot = this.cookingSystem.slots.find((s) => s.status === 'burned');
+      if (burnedSlot) {
+        this.onFryerSlotTapped(burnedSlot.index);
+        return;
+      }
+      this.serveFirstReadyCustomer();
+    });
+
+    this.input.keyboard.on('keydown-G', () => {
+      if (!this.daySystem.isPaused) this.triggerRefillGas();
+    });
+
+    this.input.keyboard.on('keydown-R', () => {
+      if (!this.daySystem.isPaused) this.triggerRestockAll();
+    });
+  }
+
+  private createStationQuickButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    color: number,
+    onClick: () => void
+  ): Phaser.GameObjects.Text {
+    const con = this.add.container(x, y);
+    const bg = this.add.graphics();
+
+    const drawBtn = (hover: boolean) => {
+      bg.clear();
+      bg.fillStyle(color, hover ? 1 : 0.92);
+      bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      bg.lineStyle(1, 0xffffff, hover ? 0.65 : 0.3);
+      bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+    };
+    drawBtn(false);
+
+    const txt = this.add
+      .text(0, 0, label, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '12.5px' : '9.5px',
+        fontStyle: '800',
+        color: '#ffffff',
+        align: 'center',
+        lineSpacing: 4,
+      })
+      .setOrigin(0.5);
+
+    const hit = this.add
+      .rectangle(0, 0, w, h, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+
+    const baseY = y;
+    hit.on('pointerover', () => {
+      drawBtn(true);
+      this.tweens.add({
+        targets: con,
+        y: baseY - 2,
+        duration: TASTE_THEME.motion.fast,
+        ease: TASTE_THEME.motion.easeOut,
+      });
+    });
+    hit.on('pointerout', () => {
+      drawBtn(false);
+      this.tweens.add({
+        targets: con,
+        y: baseY,
+        scale: 1,
+        duration: TASTE_THEME.motion.fast,
+        ease: TASTE_THEME.motion.easeOut,
+      });
+    });
+    hit.on('pointerdown', () => {
+      this.tweens.add({
+        targets: con,
+        y: baseY + 1,
+        scale: 0.98,
+        duration: 75,
+        yoyo: true,
+        ease: TASTE_THEME.motion.easeOut,
+        onComplete: onClick,
+      });
+    });
+
+    con.add([bg, txt, hit]);
+    return txt;
+  }
+
+  /**
+   * Bottom Navigation Bar (`taste-skill` One System Rule & No-Purple Rule):
+   * - Unified dark surface tabs with 1px hairline border and semantic indicator dots.
+   * - Left edge of first tab = `gut` (`20px` desktop, `12px` mobile).
+   * - Right edge of last tab = `W - gut` (`1260px` desktop, `408px` mobile).
+   */
+  private buildBottomNavBar(): void {
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const navH = this.isDesktop
+      ? TASTE_THEME.layout.desktop.bottomBarHeight
+      : TASTE_THEME.layout.mobile.bottomBarHeight;
+    const navY = H - navH;
+    const gut = this.isDesktop
+      ? TASTE_THEME.layout.desktop.gutter
+      : TASTE_THEME.layout.mobile.gutter;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(TASTE_THEME.colors.bgElevated, 0.98);
+    bg.fillRect(0, navY, W, navH);
+    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.lineBetween(0, navY, W, navY);
+
+    const tabs: Array<{ id: ModalTab; icon: string; label: string; dotColor: number }> = [
+      { id: 'shop', icon: '🏪', label: 'Thực Đơn Món', dotColor: TASTE_THEME.colors.accentPrimary },
+      { id: 'upgrade', icon: '⚡', label: 'Nâng Cấp Quán', dotColor: TASTE_THEME.colors.accentAmber },
+      { id: 'mission', icon: '📜', label: 'Nhiệm Vụ Ngày', dotColor: TASTE_THEME.colors.successLight },
+      { id: 'inventory', icon: '❄️', label: 'Kho Nguyên Liệu', dotColor: TASTE_THEME.colors.infoTeal },
+      { id: 'achievement', icon: '🏆', label: 'Thành Tựu', dotColor: TASTE_THEME.colors.accentGold },
+    ];
+
+    const gap = this.isDesktop ? 14 : 6;
+    const availW = W - gut * 2;
+    const btnW = (availW - gap * (tabs.length - 1)) / tabs.length;
+    const btnH = this.isDesktop ? 44 : 44;
+    const startX = gut + btnW / 2;
+
+    tabs.forEach((tab, idx) => {
+      const bx = startX + idx * (btnW + gap);
+      const by = navY + navH / 2;
+      const con = this.add.container(bx, by);
+
+      const g = this.add.graphics();
+      const renderTab = (hover: boolean) => {
+        g.clear();
+        g.fillStyle(hover ? 0x382a20 : TASTE_THEME.colors.bgSurface, 1);
+        g.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 9);
+        g.lineStyle(
+          1,
+          hover ? tab.dotColor : TASTE_THEME.colors.borderHairlineDark,
+          1
+        );
+        g.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 9);
+        // Subtle bottom accent indicator bar
+        g.fillStyle(tab.dotColor, hover ? 1 : 0.75);
+        g.fillRoundedRect(-18, btnH / 2 - 3, 36, 2.5, 1);
+      };
+      renderTab(false);
+
+      if (this.isDesktop) {
+        const lbl = this.add
+          .text(0, -1, `${tab.icon}  ${tab.label}`, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '13.5px',
+            fontStyle: '700',
+            color: TASTE_THEME.colors.inkOnDark,
+          })
+          .setOrigin(0.5);
+        con.add([g, lbl]);
+      } else {
+        const ic = this.add.text(0, -8, tab.icon, { fontSize: '15px' }).setOrigin(0.5);
+        const shortLbl = tab.label.split(' ').slice(0, 2).join(' ');
+        const lbl = this.add
+          .text(0, 10, shortLbl, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '10px',
+            fontStyle: '700',
+            color: TASTE_THEME.colors.inkOnDark,
+          })
+          .setOrigin(0.5);
+        con.add([g, ic, lbl]);
+      }
+
+      const hit = this.add
+        .rectangle(0, 0, btnW, btnH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+
+      hit.on('pointerover', () => {
+        renderTab(true);
+        this.tweens.add({
+          targets: con,
+          y: by - 1,
+          duration: TASTE_THEME.motion.fast,
+          ease: TASTE_THEME.motion.easeOut,
+        });
+      });
+      hit.on('pointerout', () => {
+        renderTab(false);
+        this.tweens.add({
+          targets: con,
+          y: by,
+          scale: 1,
+          duration: TASTE_THEME.motion.fast,
+          ease: TASTE_THEME.motion.easeOut,
+        });
+      });
+      hit.on('pointerdown', () => {
+        SoundManager.playPop();
+        this.tweens.add({
+          targets: con,
+          y: by + 1,
+          scale: 0.98,
+          duration: 75,
+          yoyo: true,
+          ease: TASTE_THEME.motion.easeOut,
+          onComplete: () => this.openModal(tab.id),
+        });
+      });
+
+      con.add(hit);
+    });
+  }
+
+  private bindEvents(): void {
+    this.daySystem.on('time-updated', (timeStr: string) => {
+      this.hud.updateTime(timeStr);
+    });
+
+    this.daySystem.on('day-ended', () => {
+      this.openModal('daily_result');
+    });
+
+    this.gs.on('state-changed', () => {
+      this.refreshGasUI();
+      this.todayRevenueText.setText(this.gs.formatCurrency(this.gs.dailyStats.revenue));
+      this.refreshAllTraysAndCustomers();
+    });
+
+    this.gs.on('tray-updated', (foodId: string) => {
+      const tray = this.trays.get(foodId);
+      if (tray) tray.refresh();
+      this.refreshCustomerOrderBadges();
+    });
+
+    this.gs.on('upgrade-changed', () => {
+      for (let i = 0; i < 4; i++) {
+        this.refreshFryerSlotUI(i);
+      }
+      this.refreshAllTraysAndCustomers();
+    });
+
+    this.gs.on('level-up', (newLevel: number) => {
+      this.player.playCheer(`Lên Cấp ${newLevel}! +10💎`);
+      this.showToast(
+        `🎉 Chúc mừng lên Cấp ${newLevel}! Thưởng +10 Kim Cương!`,
+        TASTE_THEME.colors.accentAmber
+      );
+    });
+
+    this.cookingSystem.on('slot-updated', (slotIndex: number) => {
+      this.refreshFryerSlotUI(slotIndex);
+      this.syncTrayCookingFlags();
+    });
+
+    this.cookingSystem.on('slot-ready', (slotIndex: number, foodId: string) => {
+      const def = this.gs.getFoodDef(foodId);
+      this.showToast(
+        `✨ ${def.shortName} đã chín vàng! Chạm rổ #${slotIndex + 1} hoặc [Space] để vớt trước khi cháy!`,
+        TASTE_THEME.colors.success
+      );
+    });
+
+    this.cookingSystem.on('slot-burned', (slotIndex: number, foodId: string) => {
+      const def = this.gs.getFoodDef(foodId);
+      this.gs.state.rating = Math.max(1.0, +(this.gs.state.rating - 0.05).toFixed(2));
+      this.gs.emit('state-changed');
+      this.showToast(
+        `🔥 Ôi không! Mẻ ${def.shortName} ở rổ #${slotIndex + 1} đã bị cháy khét vì để quá lửa!`,
+        TASTE_THEME.colors.danger
+      );
+    });
+
+    this.customerSystem.on('customer-spawned', (cust: ActiveCustomer) => {
+      this.spawnCustomerView(cust);
+      this.refreshAllTraysAndCustomers();
+    });
+
+    this.customerSystem.on('customer-left-angry', (cust: ActiveCustomer) => {
+      const view = this.customerViews.get(cust.slotIndex);
+      if (view) {
+        this.tweens.add({
+          targets: view,
+          alpha: 0,
+          y: view.y - 20,
+          duration: 220,
+          onComplete: () => view.destroy(),
+        });
+        this.customerViews.delete(cust.slotIndex);
+      }
+      this.showToast(`😡 ${cust.archetype.name} bỏ đi vì đợi lâu!`, TASTE_THEME.colors.danger);
+      this.refreshAllTraysAndCustomers();
+    });
+
+    this.customerSystem.on(
+      'customer-served',
+      (cust: ActiveCustomer, totalEarned: number, tipAmount: number) => {
+        const view = this.customerViews.get(cust.slotIndex);
+        if (view) {
+          this.spawnFloatingReward(
+            view.x,
+            view.y - 30,
+            `+${this.gs.formatCurrency(totalEarned)}`,
+            tipAmount
+          );
+          this.tweens.add({
+            targets: view,
+            scale: 1.12,
+            alpha: 0,
+            duration: 220,
+            onComplete: () => view.destroy(),
+          });
+          this.customerViews.delete(cust.slotIndex);
+        }
+        this.player.playCheer('Cảm ơn quý khách!');
+        this.refreshAllTraysAndCustomers();
+      }
+    );
+  }
+
+  private onFoodTrayTapped(foodDef: FoodDefinition): void {
+    this.gs.selectedTrayFoodId = foodDef.id;
+    const stock = this.gs.state.foods[foodDef.id];
+
+    if (!stock || !stock.unlocked) {
+      const res = this.gs.unlockFood(foodDef.id);
+      if (res.ok) {
+        this.showToast(`🎉 Đã mở khóa món ${foodDef.name}!`, TASTE_THEME.colors.success);
+        this.player.playCheer(`Có thêm ${foodDef.shortName}!`);
+      } else if (res.reason) {
+        this.showToast(res.reason, TASTE_THEME.colors.accentAmber);
+      }
+      return;
+    }
+
+    // In Pre-Day Prep phase ("Trước ngày mở bán là lúc nhập hàng"), tapping a tray imports raw stock
+    if (this.daySystem.phase === 'prep') {
+      const restockRes = this.gs.restockIngredient(foodDef.id);
+      if (restockRes.ok) {
+        this.showToast(
+          `📦 Đã nhập +${foodDef.restockBatchSize} ${foodDef.shortName} vào Kho chuẩn bị mở bán!`,
+          TASTE_THEME.colors.infoTeal
+        );
+      } else if (restockRes.reason) {
+        this.showToast(restockRes.reason, TASTE_THEME.colors.accentAmber);
+      }
+      return;
+    }
+
+    const readySlot = this.cookingSystem.slots.find(
+      (s) => s.status === 'ready' && s.foodId === foodDef.id
+    );
+    if (readySlot) {
+      this.onFryerSlotTapped(readySlot.index);
+      return;
+    }
+
+    const burnedSlot = this.cookingSystem.slots.find(
+      (s) => s.status === 'burned' && s.foodId === foodDef.id
+    );
+    if (burnedSlot) {
+      this.onFryerSlotTapped(burnedSlot.index);
+      return;
+    }
+
+    if (stock.rawStock < foodDef.batchYield) {
+      SoundManager.playError();
+      this.showToast(
+        `📦 Món ${foodDef.shortName} đã hết nguyên liệu trong Kho! (Chỉ được nhập hàng trước giờ mở bán)`,
+        TASTE_THEME.colors.danger
+      );
+      this.checkDayEndConditions();
+      return;
+    }
+
+    const cookRes = this.cookingSystem.startCooking(foodDef.id);
+    if (cookRes.ok) {
+      this.player.playCookingGesture();
+      this.showToast(
+        `🔥 Đang chiên ${foodDef.shortName} (+${foodDef.batchYield} phần)...`,
+        TASTE_THEME.colors.accentAmber
+      );
+      this.checkDayEndConditions();
+    } else if (cookRes.reason) {
+      this.showToast(cookRes.reason, TASTE_THEME.colors.danger);
+      this.checkDayEndConditions();
+    }
+  }
+
+  private onFryerSlotTapped(slotIndex: number): void {
+    if (!this.cookingSystem.isSlotUnlocked(slotIndex)) {
+      this.openModal('upgrade');
+      return;
+    }
+
+    if (this.daySystem.phase === 'prep') {
+      this.showToast(
+        '🌅 Đang trong giờ nhập hàng! Hãy nhấn [MỞ BÁN NGAY] để bắt đầu chiên.',
+        TASTE_THEME.colors.infoTeal
+      );
+      return;
+    }
+
+    const slot = this.cookingSystem.slots[slotIndex];
+    if (slot.status === 'ready') {
+      const res = this.cookingSystem.collectSlot(slotIndex);
+      if (res.ok && res.foodId) {
+        const def = this.gs.getFoodDef(res.foodId);
+        const tray = this.trays.get(res.foodId);
+        if (tray) {
+          this.animateFlyToTray(
+            this.fryerUIs[slotIndex].container.x,
+            this.fryerUIs[slotIndex].container.y,
+            tray.x,
+            tray.y,
+            def.textureKey
+          );
+        }
+        const perfectTag = res.perfect ? ' (Hoàn hảo +15 XP!)' : '';
+        this.showToast(
+          `🍱 Đã vớt +${res.added} ${def.shortName} lên khay!${perfectTag}`,
+          TASTE_THEME.colors.success
+        );
+        this.checkDayEndConditions();
+      } else if (res.reason) {
+        this.showToast(res.reason, TASTE_THEME.colors.danger);
+      }
+    } else if (slot.status === 'burned') {
+      const res = this.cookingSystem.collectSlot(slotIndex);
+      if (res.ok && res.burned && res.foodId) {
+        const def = this.gs.getFoodDef(res.foodId);
+        this.showToast(
+          `🗑️ Đã đổ bỏ mẻ ${def.shortName} bị cháy khét ở rổ #${slotIndex + 1}!`,
+          TASTE_THEME.colors.accentAmber
+        );
+        this.checkDayEndConditions();
+      }
+    } else if (slot.status === 'empty') {
+      const res = this.cookingSystem.startCooking(this.gs.selectedTrayFoodId, slotIndex);
+      if (res.ok) {
+        this.player.playCookingGesture();
+        this.checkDayEndConditions();
+      } else if (res.reason) {
+        this.showToast(res.reason, TASTE_THEME.colors.danger);
+        this.checkDayEndConditions();
+      }
+    } else {
+      this.showToast(
+        '⏳ Món đang chiên trong dầu sôi, chờ chút nhé!',
+        TASTE_THEME.colors.accentAmber
+      );
+    }
+  }
+
+  private spawnCustomerView(cust: ActiveCustomer): void {
+    const existing = this.customerViews.get(cust.slotIndex);
+    if (existing) existing.destroy();
+
+    const slotX = this.isDesktop ? 238 + cust.slotIndex * 116 : 132 + cust.slotIndex * 82;
+    const slotY = this.isDesktop ? 202 : 162;
+
+    const view = new CustomerOrder(this, slotX, slotY, cust, (clickedSlot) => {
+      this.onCustomerTapped(clickedSlot);
+    });
+    if (this.isDesktop) view.setScale(1.08);
+    this.add.existing(view);
+    this.customerViews.set(cust.slotIndex, view);
+  }
+
+  private onCustomerTapped(slotIndex: number): void {
+    const res = this.customerSystem.serveCustomer(slotIndex);
+    if (!res.ok) {
+      if (res.missingFoodIds && res.missingFoodIds.length > 0) {
+        const missingNames = res.missingFoodIds
+          .map((id) => this.gs.getFoodDef(id).shortName)
+          .join(', ');
+        this.showToast(
+          `⚠️ Thiếu món chín trên khay: ${missingNames}! Chạm khay để chiên!`,
+          TASTE_THEME.colors.danger
+        );
+
+        res.missingFoodIds.forEach((id) => {
+          const tray = this.trays.get(id);
+          if (tray) {
+            this.tweens.add({
+              targets: tray,
+              scale: 1.06,
+              duration: 120,
+              yoyo: true,
+              repeat: 2,
+            });
+          }
+        });
+      } else if (res.reason) {
+        this.showToast(res.reason, TASTE_THEME.colors.danger);
+      }
+    }
+  }
+
+  private serveFirstReadyCustomer(): void {
+    for (let i = 0; i < 4; i++) {
+      const cust = this.customerSystem.activeCustomers[i];
+      if (cust && this.customerSystem.canFulfillCustomer(i).canServe) {
+        this.onCustomerTapped(i);
+        return;
+      }
+    }
+    SoundManager.playError();
+    this.showToast(
+      'Chưa có khách nào đủ món chín để phục vụ ngay!',
+      TASTE_THEME.colors.accentAmber
+    );
+  }
+
+  private refreshGasUI(): void {
+    const ratio = Phaser.Math.Clamp(this.gs.state.gas / this.gs.state.maxGas, 0, 1);
+    this.gasFillBar.clear();
+    const barW = this.isDesktop ? 76 : 48;
+    const barY = this.isDesktop ? 28 : 10;
+    this.gasFillBar.fillStyle(TASTE_THEME.colors.bgBase, 1);
+    this.gasFillBar.fillRoundedRect(-barW / 2, barY, barW, 8, 4);
+    const barColor =
+      ratio > 0.4
+        ? TASTE_THEME.colors.successLight
+        : ratio > 0.2
+          ? TASTE_THEME.colors.accentAmber
+          : TASTE_THEME.colors.danger;
+    this.gasFillBar.fillStyle(barColor, 1);
+    this.gasFillBar.fillRoundedRect(-barW / 2, barY, Math.max(4, barW * ratio), 8, 4);
+    this.gasPercentText.setText(`Gas: ${Math.round(ratio * 100)}%`);
+  }
+
+  private refreshFryerSlotUI(slotIndex: number): void {
+    const ui = this.fryerUIs[slotIndex];
+    if (!ui) return;
+
+    const unlocked = this.cookingSystem.isSlotUnlocked(slotIndex);
+    const slot = this.cookingSystem.slots[slotIndex];
+    const w = ui.slotW;
+    const h = ui.slotH;
+
+    ui.bg.clear();
+    ui.progressFill.clear();
+
+    if (!unlocked) {
+      ui.bg.fillStyle(TASTE_THEME.colors.bgBase, 0.75);
+      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.foodIcon.setVisible(false);
+      ui.bubbleEmitter.clear();
+      ui.statusText.setPosition(0, 0);
+      ui.statusText.setText('🔒 Mở ở Nâng Cấp');
+      ui.statusText.setColor(TASTE_THEME.colors.inkMutedOnDark);
+      return;
+    }
+
+    if (slot.status === 'empty') {
+      ui.bg.fillStyle(TASTE_THEME.colors.steelDark, 0.9);
+      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      // Warm golden oil well inside the stainless fryer basket
+      ui.bg.fillStyle(0xb45309, 0.28);
+      ui.bg.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 7);
+      ui.bg.lineStyle(1, TASTE_THEME.colors.steelMid, 0.65);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.foodIcon.setVisible(false).clearTint();
+      ui.bubbleEmitter.clear();
+      ui.statusText.setPosition(0, 0);
+      ui.statusText.setText(`Rổ #${slotIndex + 1} Trống\nChạm để chiên`);
+      ui.statusText.setColor(TASTE_THEME.colors.inkOnDark);
+    } else if (slot.status === 'cooking' && slot.foodId) {
+      const def = this.gs.getFoodDef(slot.foodId);
+      const ratio = Phaser.Math.Clamp(slot.elapsedMs / slot.durationMs, 0, 1);
+      const remainSec = ((slot.durationMs - slot.elapsedMs) / 1000).toFixed(1);
+
+      ui.bg.fillStyle(0x78350f, 1);
+      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.fillStyle(TASTE_THEME.colors.accentAmber, 0.45);
+      ui.bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 7);
+      ui.bg.lineStyle(2, TASTE_THEME.colors.accentGold, 1);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+
+      ui.foodIcon.setTexture(def.textureKey).setVisible(true).clearTint();
+      ui.statusText.setPosition(16, -11);
+      ui.statusText.setText(`${def.shortName}\n🔥 Đang chiên: ${remainSec}s`);
+      ui.statusText.setColor('#ffffff');
+
+      const pBarW = this.isDesktop ? 98 : 62;
+      const pBarH = this.isDesktop ? 8 : 6;
+      const pBarX = -16;
+      const pBarY = this.isDesktop ? 24 : 13;
+      ui.progressFill.fillStyle(TASTE_THEME.colors.bgBase, 0.9);
+      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 4);
+      ui.progressFill.fillStyle(TASTE_THEME.colors.accentGold, 1);
+      ui.progressFill.fillRoundedRect(pBarX, pBarY, Math.max(4, pBarW * ratio), pBarH, 4);
+      // Golden readiness milestone tick mark at right end
+      ui.progressFill.fillStyle(TASTE_THEME.colors.successLight, 1);
+      ui.progressFill.fillRect(pBarX + pBarW - 3, pBarY - 2, 2.5, pBarH + 4);
+    } else if (slot.status === 'ready' && slot.foodId) {
+      const def = this.gs.getFoodDef(slot.foodId);
+      const burnRatio = Phaser.Math.Clamp(slot.burnElapsedMs / Math.max(1, slot.burnLimitMs), 0, 1);
+      const remainBurnRatio = Phaser.Math.Clamp(1 - burnRatio, 0, 1);
+      const remainBurnSec = Math.max(
+        0,
+        (slot.burnLimitMs - slot.burnElapsedMs) / 1000
+      ).toFixed(1);
+
+      const isUrgent = burnRatio >= 0.65;
+      const cardColor = isUrgent ? 0x9a3412 : TASTE_THEME.colors.success;
+      const borderColor = isUrgent ? TASTE_THEME.colors.danger : 0xffffff;
+
+      ui.bg.fillStyle(cardColor, 1);
+      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.lineStyle(2, borderColor, 0.95);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+
+      ui.foodIcon.setTexture(def.textureKey).setVisible(true).clearTint();
+      ui.bubbleEmitter.clear();
+      ui.statusText.setPosition(16, -11);
+      ui.statusText.setText(`${def.shortName}\n✓ VỚT NGAY (${remainBurnSec}s)`);
+      ui.statusText.setColor('#ffffff');
+
+      // Burn Countdown Bar (Green -> Amber -> Danger Red as burnRatio increases)
+      const pBarW = this.isDesktop ? 98 : 62;
+      const pBarH = this.isDesktop ? 8 : 6;
+      const pBarX = -16;
+      const pBarY = this.isDesktop ? 24 : 13;
+      const barColor =
+        burnRatio < 0.45
+          ? TASTE_THEME.colors.successLight
+          : burnRatio < 0.75
+            ? TASTE_THEME.colors.accentAmber
+            : TASTE_THEME.colors.danger;
+
+      ui.progressFill.fillStyle(TASTE_THEME.colors.bgBase, 0.9);
+      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 4);
+      ui.progressFill.fillStyle(barColor, 1);
+      ui.progressFill.fillRoundedRect(
+        pBarX,
+        pBarY,
+        Math.max(4, pBarW * remainBurnRatio),
+        pBarH,
+        4
+      );
+    } else if (slot.status === 'burned' && slot.foodId) {
+      const def = this.gs.getFoodDef(slot.foodId);
+      ui.bg.fillStyle(0x2b1111, 1);
+      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.fillStyle(TASTE_THEME.colors.danger, 0.22);
+      ui.bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 7);
+      ui.bg.lineStyle(2, TASTE_THEME.colors.danger, 1);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+
+      ui.foodIcon.setTexture(def.textureKey).setVisible(true).setTint(0x3a2e2b);
+      ui.statusText.setPosition(16, 0);
+      ui.statusText.setText(`💀 CHÁY KHÉT!\nChạm để đổ bỏ`);
+      ui.statusText.setColor('#fecaca');
+    }
+  }
+
+  private syncTrayCookingFlags(): void {
+    this.trays.forEach((tray, foodId) => {
+      const matchingSlots = this.cookingSystem.slots.filter(
+        (s) =>
+          s.foodId === foodId &&
+          (s.status === 'cooking' || s.status === 'ready' || s.status === 'burned')
+      );
+
+      if (matchingSlots.length === 0) {
+        tray.setCookingProgress(0, 'idle');
+        return;
+      }
+
+      // Priority: ready (about to burn) > cooking > burned
+      const readySlot = matchingSlots.find((s) => s.status === 'ready');
+      if (readySlot) {
+        const burnRatio = readySlot.burnElapsedMs / Math.max(1, readySlot.burnLimitMs);
+        tray.setCookingProgress(burnRatio, 'ready');
+        return;
+      }
+
+      const cookingSlot = matchingSlots.find((s) => s.status === 'cooking');
+      if (cookingSlot) {
+        const cookRatio = cookingSlot.elapsedMs / Math.max(1, cookingSlot.durationMs);
+        tray.setCookingProgress(cookRatio, 'cooking');
+        return;
+      }
+
+      tray.setCookingProgress(1, 'burned');
+    });
+  }
+
+  private refreshCustomerOrderBadges(): void {
+    const neededSet = new Set<string>();
+    this.customerSystem.activeCustomers.forEach((cust) => {
+      if (!cust) return;
+      cust.orders.forEach((req) => neededSet.add(req.foodId));
+    });
+
+    this.trays.forEach((tray, foodId) => {
+      tray.setOrderNeeded(neededSet.has(foodId));
+    });
+
+    this.customerViews.forEach((view) => {
+      view.refreshOrderState();
+    });
+  }
+
+  private refreshAllTraysAndCustomers(): void {
+    this.trays.forEach((t) => t.refresh());
+    this.refreshCustomerOrderBadges();
+  }
+
+  private animateFlyToTray(
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    texKey: string
+  ): void {
+    const flyer = this.add.image(fromX, fromY, texKey).setScale(0.32).setDepth(50);
+    this.tweens.add({
+      targets: flyer,
+      x: toX,
+      y: toY,
+      scale: 0.42,
+      duration: 280,
+      ease: TASTE_THEME.motion.easeOut,
+      onComplete: () => flyer.destroy(),
+    });
+  }
+
+  private spawnFloatingReward(x: number, y: number, text: string, tipAmount: number): void {
+    const label = tipAmount > 0 ? `${text}\n(Tip +${this.gs.formatCurrency(tipAmount)})` : text;
+    const floatTxt = this.add
+      .text(x, y, label, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '14px' : '12.5px',
+        fontStyle: '800',
+        color: '#4ade80',
+        backgroundColor: '#16110d',
+        padding: { left: 8, right: 8, top: 4, bottom: 4 },
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(60);
+
+    this.tweens.add({
+      targets: floatTxt,
+      y: y - 44,
+      alpha: 0,
+      duration: 1050,
+      ease: TASTE_THEME.motion.easeOut,
+      onComplete: () => floatTxt.destroy(),
+    });
+  }
+
+  public showToast(message: string, bgColor: number = TASTE_THEME.colors.bgSurface): void {
+    const toastX = this.isDesktop ? 362 : this.scale.width / 2;
+    const toastY = this.isDesktop ? 286 : 228;
+    const toastCon = this.add.container(toastX, toastY).setDepth(100);
+    const txt = this.add
+      .text(0, 0, message, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '13px' : '11.5px',
+        fontStyle: '700',
+        color: '#ffffff',
+        align: 'center',
+      })
+      .setOrigin(0.5);
+
+    const b = txt.getBounds();
+    const padX = 20;
+    const padY = 10;
+    const g = this.add.graphics();
+    g.fillStyle(bgColor, 0.96);
+    g.fillRoundedRect(
+      -b.width / 2 - padX / 2,
+      -b.height / 2 - padY / 2,
+      b.width + padX,
+      b.height + padY,
+      8
+    );
+    g.lineStyle(1, 0xffffff, 0.35);
+    g.strokeRoundedRect(
+      -b.width / 2 - padX / 2,
+      -b.height / 2 - padY / 2,
+      b.width + padX,
+      b.height + padY,
+      8
+    );
+
+    toastCon.add([g, txt]);
+    toastCon.setAlpha(0);
+
+    this.tweens.add({
+      targets: toastCon,
+      alpha: 1,
+      y: toastY - 8,
+      duration: 160,
+      ease: TASTE_THEME.motion.easeOut,
+      onComplete: () => {
+        this.time.delayedCall(1500, () => {
+          this.tweens.add({
+            targets: toastCon,
+            alpha: 0,
+            y: toastY - 20,
+            duration: 200,
+            onComplete: () => toastCon.destroy(),
+          });
+        });
+      },
+    });
+  }
+
+  public openModal(tab: ModalTab): void {
+    this.daySystem.isPaused = true;
+    if (this.scene.isActive('ModalScene')) {
+      this.scene.stop('ModalScene');
+    }
+    this.scene.launch('ModalScene', {
+      tab,
+      shopScene: this,
+    });
+  }
+
+  public resumeFromModal(): void {
+    this.daySystem.isPaused = false;
+    this.refreshActionButtonsForPhase();
+    this.refreshGasUI();
+    this.refreshAllTraysAndCustomers();
+    for (let i = 0; i < 4; i++) {
+      this.refreshFryerSlotUI(i);
+    }
+  }
+
+  private checkDayEndConditions(): void {
+    if (this.daySystem.phase !== 'selling' || !this.daySystem.isRunning || this.endDayPending) {
+      return;
+    }
+
+    // Wait while any fryer slot is still actively cooking so the last batch finishes frying
+    if (this.cookingSystem.hasCookingSlot()) {
+      return;
+    }
+
+    const outOfGas = !this.gs.hasEnoughGasToCook();
+    const outOfStock = !this.gs.hasCookableRawStock();
+
+    if (!outOfGas && !outOfStock) {
+      return;
+    }
+
+    this.endDayPending = true;
+
+    // Auto-collect any ready batches onto trays so player gets full XP & stock
+    this.cookingSystem.collectAllReadySlots();
+
+    // Auto-serve any waiting customers whose orders can now be fulfilled
+    for (let i = 0; i < 4; i++) {
+      const cust = this.customerSystem.activeCustomers[i];
+      if (cust && this.customerSystem.canFulfillCustomer(i).canServe) {
+        this.onCustomerTapped(i);
+      }
+    }
+
+    const reason = outOfGas ? 'out_of_gas' : 'out_of_stock';
+    const msg = outOfGas
+      ? '⛽ Đã hết bình Gas! Kết thúc 1 ngày bán hàng...'
+      : '📦 Đã hết đồ trong Kho! Kết thúc 1 ngày bán hàng...';
+
+    SoundManager.playDing();
+    this.showToast(msg, TASTE_THEME.colors.danger);
+
+    this.time.delayedCall(650, () => {
+      this.daySystem.endDay(reason);
+    });
+  }
+
+  public update(_time: number, delta: number): void {
+    if (this.daySystem.isPaused) return;
+
+    this.daySystem.update(delta);
+    this.cookingSystem.update(delta);
+    this.customerSystem.update(delta, this.daySystem.isRunning);
+    this.checkDayEndConditions();
+
+    this.customerViews.forEach((view) => {
+      view.updatePatienceBar();
+    });
+
+    this.bubblePhase += delta * 0.01;
+    for (let i = 0; i < 4; i++) {
+      const slot = this.cookingSystem.slots[i];
+      const ui = this.fryerUIs[i];
+      if (!ui) continue;
+      if (slot.status === 'cooking') {
+        ui.bubbleEmitter.clear();
+        ui.bubbleEmitter.fillStyle(0xfef08a, 0.72);
+        for (let b = 0; b < 4; b++) {
+          const bx = -44 + b * 8 + Math.sin(this.bubblePhase + b) * 3;
+          const by = 8 - ((this.bubblePhase * 6 + b * 5) % 20);
+          ui.bubbleEmitter.fillCircle(bx, by, 2.5);
+        }
+      } else if (slot.status === 'burned') {
+        ui.bubbleEmitter.clear();
+        ui.bubbleEmitter.fillStyle(0x9ca3af, 0.55);
+        for (let b = 0; b < 4; b++) {
+          const bx = -44 + b * 9 + Math.cos(this.bubblePhase * 0.8 + b) * 4;
+          const by = 10 - ((this.bubblePhase * 5 + b * 6) % 26);
+          ui.bubbleEmitter.fillCircle(bx, by, 3.2);
+        }
+      }
+    }
+  }
+}

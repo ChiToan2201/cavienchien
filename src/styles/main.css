@@ -1,0 +1,50 @@
+:root {
+  --bg: #16110d;
+  --surface: #211913;
+  --card: #faf5ed;
+  --ink: #f7f1e8;
+  --muted: #b8a693;
+  --accent: #d9381e;
+  --hairline: rgba(247, 241, 232, 0.11);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 50% 18%, rgba(217, 56, 30, 0.12) 0%, transparent 58%),
+    radial-gradient(circle at 50% 85%, rgba(217, 119, 6, 0.08) 0%, transparent 60%);
+  font-family: 'Plus Jakarta Sans', 'Baloo 2', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  display: block;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.65),
+    0 4px 16px rgba(0, 0, 0, 0.35);
+}
