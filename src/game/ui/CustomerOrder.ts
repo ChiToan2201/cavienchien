@@ -11,6 +11,7 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
   private bubbleBg!: Phaser.GameObjects.Graphics;
   private patienceBarFill!: Phaser.GameObjects.Graphics;
   private moodText!: Phaser.GameObjects.Text;
+  private veggieBadge!: Phaser.GameObjects.Text;
   private serveHintBadge!: Phaser.GameObjects.Container;
   private orderItemContainers: Phaser.GameObjects.Container[] = [];
 
@@ -118,7 +119,21 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
       .text(-37, -19, '😄', { fontSize: '12px' })
       .setOrigin(0.5);
     this.patienceBarFill = this.scene.add.graphics();
-    this.add([this.moodText, this.patienceBarFill]);
+
+    // Veggie request tag at top of speech bubble
+    this.veggieBadge = this.scene.add
+      .text(0, -74, '', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '8.5px',
+        fontStyle: '800',
+        color: '#ffffff',
+        backgroundColor: '#1f8a4c',
+        padding: { left: 4, right: 4, top: 1, bottom: 1 },
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    this.add([this.moodText, this.patienceBarFill, this.veggieBadge]);
 
     // Ready-to-serve CTA pill badge
     this.serveHintBadge = this.scene.add.container(0, 5);
@@ -185,6 +200,22 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     this.bubbleBg.fillTriangle(-6, -10, 6, -10, 0, -2);
 
     this.serveHintBadge.setVisible(allReady);
+
+    if (this.customer.wantsVeggie) {
+      this.veggieBadge.setVisible(true);
+      if (this.customer.hasVeggie) {
+        this.veggieBadge.setText('🥒 Đã có rau ✓');
+        this.veggieBadge.setBackgroundColor('#1f8a4c');
+        this.veggieBadge.setColor('#ffffff');
+      } else {
+        this.veggieBadge.setText('🥒 Cần rau ăn kèm');
+        this.veggieBadge.setBackgroundColor('#d97706');
+        this.veggieBadge.setColor('#ffffff');
+      }
+    } else {
+      this.veggieBadge.setVisible(false);
+    }
+
     this.updatePatienceBar();
   }
 
