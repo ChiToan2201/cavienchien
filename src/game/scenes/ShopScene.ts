@@ -1486,6 +1486,32 @@ export class ShopScene extends Phaser.Scene {
       this.refreshAllTraysAndCustomers();
     });
 
+    this.customerSystem.on('customer-veggie-added', (cust: ActiveCustomer) => {
+      const view = this.customerViews.get(cust.slotIndex);
+      if (view) {
+        view.refreshOrderState();
+        this.tweens.add({
+          targets: view,
+          scale: this.isDesktop ? 1.09 : 1.05,
+          duration: 120,
+          yoyo: true,
+        });
+      }
+    });
+
+    this.customerSystem.on('customer-sauce-added', (cust: ActiveCustomer) => {
+      const view = this.customerViews.get(cust.slotIndex);
+      if (view) {
+        view.refreshOrderState();
+        this.tweens.add({
+          targets: view,
+          scale: this.isDesktop ? 1.09 : 1.05,
+          duration: 120,
+          yoyo: true,
+        });
+      }
+    });
+
     this.customerSystem.on('customer-left-angry', (cust: ActiveCustomer) => {
       const view = this.customerViews.get(cust.slotIndex);
       if (view) {

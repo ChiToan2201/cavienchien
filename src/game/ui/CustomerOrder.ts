@@ -1,8 +1,18 @@
 import Phaser from 'phaser';
-import { ActiveCustomer } from '../systems/CustomerSystem';
+import { ActiveCustomer, SauceType, VeggieType } from '../systems/CustomerSystem';
 import { GameStateManager } from '../managers/GameStateManager';
 import { TASTE_THEME } from '../config/tasteTheme';
 import { getLogicalDimensions } from '../config/display';
+
+function getVeggieLabel(type: VeggieType, done: boolean): string {
+  const name = type === 'dua_leo' ? '🥒 Dưa leo' : type === 'dau_bap' ? '🫑 Đậu bắp' : '🥗 Xà lách';
+  return done ? `${name} ✓` : name;
+}
+
+function getSauceLabel(type: SauceType, done: boolean): string {
+  const name = type === 'tuong_ot' ? '🌶️ T.Ớt' : type === 'tuong_den' ? '🥢 T.Đen' : '🍑 Xí muội';
+  return done ? `${name} ✓` : name;
+}
 
 export class CustomerOrder extends Phaser.GameObjects.Container {
   private gs: GameStateManager;
@@ -14,6 +24,7 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
   private patienceBarFill!: Phaser.GameObjects.Graphics;
   private moodText!: Phaser.GameObjects.Text;
   private veggieBadge!: Phaser.GameObjects.Text;
+  private sauceBadge!: Phaser.GameObjects.Text;
   private serveHintBadge!: Phaser.GameObjects.Container;
   private orderItemContainers: Phaser.GameObjects.Container[] = [];
 
@@ -142,21 +153,33 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
       .setOrigin(0.5);
     this.patienceBarFill = this.scene.add.graphics();
 
-    // Veggie request tag at top of speech bubble
-    const veggieY = this.isDesktop ? -74 : -64;
+    // Veggie & Sauce request tags at top of speech bubble
+    const condimentBadgeY = this.isDesktop ? -74 : -64;
     this.veggieBadge = this.scene.add
-      .text(0, veggieY, '', {
+      .text(0, condimentBadgeY, '', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: this.isDesktop ? '8.5px' : '7.5px',
+        fontSize: this.isDesktop ? '8px' : '7px',
         fontStyle: '800',
         color: '#ffffff',
         backgroundColor: '#1f8a4c',
-        padding: { left: 4, right: 4, top: 1, bottom: 1 },
+        padding: { left: 3, right: 3, top: 1, bottom: 1 },
       })
       .setOrigin(0.5)
       .setVisible(false);
 
-    this.add([this.moodText, this.patienceBarFill, this.veggieBadge]);
+    this.sauceBadge = this.scene.add
+      .text(0, condimentBadgeY, '', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '8px' : '7px',
+        fontStyle: '800',
+        color: '#ffffff',
+        backgroundColor: '#1f8a4c',
+        padding: { left: 3, right: 3, top: 1, bottom: 1 },
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    this.add([this.moodText, this.patienceBarFill, this.veggieBadge, this.sauceBadge]);
 
     // Ready-to-serve CTA pill badge
     const serveW = this.isDesktop ? 84 : 72;
@@ -232,19 +255,33 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
 
     this.serveHintBadge.setVisible(allReady);
 
-    if (this.customer.wantsVeggie) {
+    const hasVeggieReq = Boolean(this.customer.requestedVeggie);
+    const hasSauceReq = Boolean(this.customer.requestedSauce);
+
+    if (hasVeggieReq && hasSauceReq) {
+      this.veggieBadge.setX(-24);
+      this.sauceBadge.setX(24);
+    } else {
+      this.veggieBadge.setX(0);
+      this.sauceBadge.setX(0);
+    }
+
+    if (this.customer.requestedVeggie) {
       this.veggieBadge.setVisible(true);
-      if (this.customer.hasVeggie) {
-        this.veggieBadge.setText('🥒 Đã có rau ✓');
-        this.veggieBadge.setBackgroundColor('#1f8a4c');
-        this.veggieBadge.setColor('#ffffff');
-      } else {
-        this.veggieBadge.setText('🥒 Cần rau');
-        this.veggieBadge.setBackgroundColor('#d97706');
-        this.veggieBadge.setColor('#ffffff');
-      }
+      const done = this.customer.hasVeggie;
+      this.veggieBadge.setText(getVeggieLabel(this.customer.requestedVeggie, done));
+      this.veggieBadge.setBackgroundColor(done ? '#15803d' : '#d97706');
     } else {
       this.veggieBadge.setVisible(false);
+    }
+
+    if (this.customer.requestedSauce) {
+      this.sauceBadge.setVisible(true);
+      const done = this.customer.hasSauce;
+      this.sauceBadge.setText(getSauceLabel(this.customer.requestedSauce, done));
+      this.sauceBadge.setBackgroundColor(done ? '#15803d' : '#d97706');
+    } else {
+      this.sauceBadge.setVisible(false);
     }
 
     this.updatePatienceBar();
