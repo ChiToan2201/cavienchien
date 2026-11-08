@@ -205,6 +205,14 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('prop_topping_hanh', 'assets/foods/topping-hanh.png');
     this.load.image('prop_topping_ot', 'assets/foods/topping-ot.png');
     this.load.image('prop_topping_tac', 'assets/foods/topping-tac.png');
+
+    // Interactive Serving Station Vegetables & Sauces
+    this.load.image('veggie_dau_bap', 'assets/vegetables/dau-bap.png');
+    this.load.image('veggie_dua_leo', 'assets/vegetables/dua-leo.png');
+    this.load.image('veggie_xa_lach', 'assets/vegetables/xa-lach.png');
+    this.load.image('sauce_tuong_ot', 'assets/sauces/tuong-ot.png');
+    this.load.image('sauce_tuong_den', 'assets/sauces/tuong-den.png');
+    this.load.image('sauce_tuong_xi_muoi', 'assets/sauces/tuong-xi-muoi.png');
   }
 
   create(): void {
