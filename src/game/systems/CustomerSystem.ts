@@ -9,6 +9,8 @@ export interface OrderRequirement {
 }
 
 export type CustomerMood = 'happy' | 'normal' | 'impatient';
+export type VeggieType = 'dua_leo' | 'dau_bap' | 'xa_lach';
+export type SauceType = 'tuong_ot' | 'tuong_den' | 'tuong_xi_muoi';
 
 export interface ActiveCustomer {
   uid: string;
@@ -19,6 +21,9 @@ export interface ActiveCustomer {
   orders: OrderRequirement[];
   wantsVeggie: boolean;
   hasVeggie: boolean;
+  requestedVeggie?: VeggieType | null;
+  requestedSauce?: SauceType | null;
+  hasSauce: boolean;
   maxPatienceMs: number;
   remainingPatienceMs: number;
   mood: CustomerMood;
@@ -142,7 +147,18 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     });
 
     const maxPatienceMs = archetype.patienceSeconds * 1000;
-    const wantsVeggie = Math.random() < 0.55; // 55% khách muốn ăn kèm dưa leo / đồ chua
+    const wantsVeggie = Math.random() < 0.6; // 60% khách muốn ăn kèm rau
+    const veggieOptions: VeggieType[] = ['dua_leo', 'dau_bap', 'xa_lach'];
+    const requestedVeggie = wantsVeggie
+      ? veggieOptions[Math.floor(Math.random() * veggieOptions.length)]
+      : null;
+
+    const wantsSauce = Math.random() < 0.7; // 70% khách muốn có nước chấm
+    const sauceOptions: SauceType[] = ['tuong_ot', 'tuong_den', 'tuong_xi_muoi'];
+    const requestedSauce = wantsSauce
+      ? sauceOptions[Math.floor(Math.random() * sauceOptions.length)]
+      : null;
+
     const customer: ActiveCustomer = {
       uid: `cust_${this.uidCounter++}`,
       slotIndex: emptySlot,
@@ -152,6 +168,9 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
       orders,
       wantsVeggie,
       hasVeggie: false,
+      requestedVeggie,
+      requestedSauce,
+      hasSauce: false,
       maxPatienceMs,
       remainingPatienceMs: maxPatienceMs,
       mood: 'happy',
@@ -167,13 +186,49 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
 
   public addVeggieToCustomer(slotIndex: number): boolean {
     const cust = this.activeCustomers[slotIndex];
-    if (!cust || !cust.wantsVeggie || cust.hasVeggie) return false;
+    if (!cust || !cust.requestedVeggie || cust.hasVeggie) return false;
     if (!this.gs.consumeVeggie()) return false;
     cust.hasVeggie = true;
     SoundManager.playPop();
-    this.emit('customer-veggie-added', cust);
+    this.emit('customer-veggie-added', cust, cust.requestedVeggie);
     this.emit('customers-changed');
     return true;
+  }
+
+  public autoServeVeggie(type: VeggieType): { success: boolean; customerIndex?: number; reason?: string } {
+    if (this.gs.state.veggieStock <= 0) {
+      return { success: false, reason: 'Đã hết rau trong kho! Bấm [+] để nhập thêm.' };
+    }
+    const idx = this.activeCustomers.findIndex(
+      (c) => c !== null && c.requestedVeggie === type && !c.hasVeggie
+    );
+    if (idx === -1) {
+      return { success: false, reason: 'Không có khách nào đang chờ món rau này!' };
+    }
+    if (!this.gs.consumeVeggie()) {
+      return { success: false, reason: 'Không thể lấy rau từ kho!' };
+    }
+    const cust = this.activeCustomers[idx]!;
+    cust.hasVeggie = true;
+    SoundManager.playPop();
+    this.emit('customer-veggie-added', cust, type);
+    this.emit('customers-changed');
+    return { success: true, customerIndex: idx };
+  }
+
+  public autoServeSauce(type: SauceType): { success: boolean; customerIndex?: number; reason?: string } {
+    const idx = this.activeCustomers.findIndex(
+      (c) => c !== null && c.requestedSauce === type && !c.hasSauce
+    );
+    if (idx === -1) {
+      return { success: false, reason: 'Không có khách nào đang chờ loại nước chấm này!' };
+    }
+    const cust = this.activeCustomers[idx]!;
+    cust.hasSauce = true;
+    SoundManager.playSizzle();
+    this.emit('customer-sauce-added', cust, type);
+    this.emit('customers-changed');
+    return { success: true, customerIndex: idx };
   }
 
   public canFulfillCustomer(slotIndex: number): { canServe: boolean; missingFoodIds: string[] } {
@@ -222,18 +277,31 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     const moodMultiplier = patienceRatio > 0.6 ? 1.2 : patienceRatio > 0.3 ? 1.05 : 1.0;
 
     let veggieBonus = 0;
-    if (cust.wantsVeggie && cust.hasVeggie) {
-      veggieBonus = 4000; // Phụ thu tiền rau 4k
+    if (cust.requestedVeggie && cust.hasVeggie) {
+      veggieBonus = 3000; // Phụ thu tiền rau 3k
+    }
+
+    let sauceBonus = 0;
+    if (cust.requestedSauce && cust.hasSauce) {
+      sauceBonus = 2000; // Phụ thu tiền sốt đặc biệt 2k
     }
 
     const rawTotal = cust.totalBasePrice * cust.archetype.tipMultiplier * this.gs.getTipBonusMultiplier() * moodMultiplier;
     let tipAmount = Math.max(0, Math.round(rawTotal / 1000) * 1000 - cust.totalBasePrice);
 
-    // Ảnh hưởng của Rau ăn kèm
-    if (cust.wantsVeggie && !cust.hasVeggie) {
-      tipAmount = 0; // Quên rau: không có tiền boa
-    } else if (cust.wantsVeggie && cust.hasVeggie) {
-      tipAmount += 2000; // Khách có đủ dưa leo đồ chua boa thêm 2k
+    // Ảnh hưởng của Rau & Nước chấm
+    const missedVeggie = cust.requestedVeggie && !cust.hasVeggie;
+    const missedSauce = cust.requestedSauce && !cust.hasSauce;
+
+    if (missedVeggie || missedSauce) {
+      tipAmount = 0; // Quên rau hoặc nước chấm: khách không boa
+    } else {
+      if (cust.requestedVeggie && cust.hasVeggie) tipAmount += 1500;
+      if (cust.requestedSauce && cust.hasSauce) tipAmount += 1500;
+      // Perfect combo bonus: cả rau và sốt đều chuẩn vị
+      if (cust.requestedVeggie && cust.hasVeggie && cust.requestedSauce && cust.hasSauce) {
+        this.gs.addXp(5);
+      }
     }
 
     // Ảnh hưởng của Dầu chiên
@@ -244,7 +312,7 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
       tipAmount = Math.round(tipAmount * 0.5); // Dầu sẫm màu: giảm 50% tiền boa
     }
 
-    const totalEarned = cust.totalBasePrice + veggieBonus + tipAmount;
+    const totalEarned = cust.totalBasePrice + veggieBonus + sauceBonus + tipAmount;
 
     this.activeCustomers[slotIndex] = null;
     this.gs.dailyStats.customersServed += 1;
