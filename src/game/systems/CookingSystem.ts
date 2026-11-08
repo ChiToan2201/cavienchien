@@ -108,7 +108,9 @@ export class CookingSystem extends Phaser.Events.EventEmitter {
     targetSlot.status = 'cooking';
     targetSlot.foodId = foodId;
     targetSlot.elapsedMs = 0;
-    targetSlot.durationMs = this.gs.getCookTimeMs(foodId);
+    const baseDuration = this.gs.getCookTimeMs(foodId);
+    const oilMultiplier = this.gs.getOilCookingMultiplier();
+    targetSlot.durationMs = Math.round(baseDuration * oilMultiplier);
     targetSlot.burnElapsedMs = 0;
     targetSlot.burnLimitMs = Math.max(7500, Math.round(targetSlot.durationMs * 2.4));
 
@@ -137,6 +139,9 @@ export class CookingSystem extends Phaser.Events.EventEmitter {
     }
 
     const foodId = slot.foodId;
+
+    // Hao mòn chất lượng dầu sau mỗi mẻ chiên
+    this.gs.state.oilQuality = Math.max(0, this.gs.state.oilQuality - 5);
 
     if (slot.status === 'burned') {
       slot.status = 'empty';
