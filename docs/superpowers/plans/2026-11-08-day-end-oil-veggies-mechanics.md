@@ -47,13 +47,13 @@
   - `gs.getOilCookingMultiplier(): number`
   - `gs.getOilStatus(): 'fresh' | 'degraded' | 'burned'`
 
-- [ ] **Step 1: Cập nhật `SaveDataSchema` và `DailyStats` trong `src/game/managers/SaveManager.ts`**
+- [x] **Step 1: Cập nhật `SaveDataSchema` và `DailyStats` trong `src/game/managers/SaveManager.ts`**
   - Thêm trường `oilQuality: number` và `veggieStock: number` vào `SaveDataSchema`.
   - Thêm trường `oilCost: number`, `veggieCost: number`, `wastedFoodCount: number`, `wastedFoodCost: number` vào `DailyStats`.
   - Khởi tạo giá trị mặc định trong `createDefaultSave()`: `oilQuality: 100`, `veggieStock: 15`.
   - Đảm bảo trong hàm `load()` nếu thiếu trường thì gán fallback: `data.oilQuality = data.oilQuality ?? 100`, `data.veggieStock = data.veggieStock ?? 15`.
 
-- [ ] **Step 2: Triển khai các phương thức quản lý Dầu, Rau và Hủy đồ tồn trong `src/game/managers/GameStateManager.ts`**
+- [x] **Step 2: Triển khai các phương thức quản lý Dầu, Rau và Hủy đồ tồn trong `src/game/managers/GameStateManager.ts`**
   - Trong `resetDailyStats()`: reset `oilCost = 0`, `veggieCost = 0`, `wastedFoodCount = 0`, `wastedFoodCost = 0`.
   - Hàm `getOilStatus()`:
     - `oilQuality >= 60`: `'fresh'`
@@ -79,7 +79,7 @@
     - Gán vào `dailyStats.wastedFoodCount` và `dailyStats.wastedFoodCost`.
     - Emit `state-changed`. Trả về `{ count, cost }`.
 
-- [ ] **Step 3: Kiểm tra kiểu dữ liệu với `npm run typecheck`**
+- [x] **Step 3: Kiểm tra kiểu dữ liệu với `npm run typecheck`**
   - Chạy `npm run typecheck` để đảm bảo code biên dịch sạch.
 
 ---
@@ -95,7 +95,7 @@
   - Khi hoàn thành mẻ chiên: trừ `state.oilQuality = Math.max(0, state.oilQuality - 5)`.
   - Thời gian mẻ chiên `durationMs = Math.round(baseDuration * oilMultiplier)`.
 
-- [ ] **Step 1: Cập nhật hàm tính thời gian chiên trong `CookingSystem.ts`**
+- [x] **Step 1: Cập nhật hàm tính thời gian chiên trong `CookingSystem.ts`**
   - Trong `startCooking(foodId, preferredSlotIndex)`:
     - Tính thời gian chiên có tính đến hệ số dầu:
       ```typescript
@@ -105,12 +105,12 @@
       ```
     - Bếp tiêu thụ gas như cũ, nhưng lưu ý không trigger bất kỳ sự kiện hết ngày nào từ đây.
 
-- [ ] **Step 2: Giảm chất lượng dầu khi thu hoạch mẻ chiên trong `collectSlot`**
+- [x] **Step 2: Giảm chất lượng dầu khi thu hoạch mẻ chiên trong `collectSlot`**
   - Khi mẻ chiên thu hoạch thành công:
     - `this.gs.state.oilQuality = Math.max(0, this.gs.state.oilQuality - 5);`
     - Emit `state-changed` và phát sự kiện `oil-degraded` nếu cần.
 
-- [ ] **Step 3: Kiểm tra với `npm run typecheck`**
+- [x] **Step 3: Kiểm tra với `npm run typecheck`**
 
 ---
 
@@ -128,7 +128,7 @@
   - Phương thức `addVeggieToCustomer(index: number): boolean`
   - Cập nhật hiển thị icon rau trên bong bóng đơn hàng `CustomerOrder.ts`
 
-- [ ] **Step 1: Bổ sung trường `wantsVeggie` và `hasVeggie` vào `ActiveCustomer`**
+- [x] **Step 1: Bổ sung trường `wantsVeggie` và `hasVeggie` vào `ActiveCustomer`**
   - Trong `CustomerSystem.ts`:
     - Khi tạo khách mới (`spawnCustomer`):
       `wantsVeggie: Math.random() < 0.55` (55% khách muốn ăn kèm dưa leo/đồ chua).
@@ -141,7 +141,7 @@
         - Trả về `true`.
     - Ngược lại trả về `false`.
 
-- [ ] **Step 2: Cập nhật logic thanh toán tiền & điểm thưởng/trừ trong `serveCustomer`**
+- [x] **Step 2: Cập nhật logic thanh toán tiền & điểm thưởng/trừ trong `serveCustomer`**
   - Khi hoàn thành phục vụ khách:
     - **Về rau ăn kèm:**
       - Nếu `cust.wantsVeggie && cust.hasVeggie`: Khách trả thêm `+4000`đ phụ thu rau (`this.gs.addMoney(4000, true)`), tăng thêm tiền boa `+2000`đ.
@@ -152,13 +152,13 @@
         - Nếu `'degraded'`: Giảm 50% tiền boa.
         - Nếu `'fresh'`: Giữ nguyên tiền boa và cộng rating bình thường.
 
-- [ ] **Step 3: Cập nhật giao diện bong bóng đơn hàng trong `CustomerOrder.ts`**
+- [x] **Step 3: Cập nhật giao diện bong bóng đơn hàng trong `CustomerOrder.ts`**
   - Vẽ thêm badge nhỏ ở góc đĩa đơn hàng:
     - Icon `🥒 Rau` (màu xanh lá nhạt).
     - Nếu `hasVeggie === false`: viền nét đứt hoặc màu xám cảnh báo cần gắp rau.
     - Nếu `hasVeggie === true`: viền xanh lá đậm kèm dấu tích `✓` xanh.
 
-- [ ] **Step 4: Kiểm tra với `npm run typecheck`**
+- [x] **Step 4: Kiểm tra với `npm run typecheck`**
 
 ---
 
@@ -176,7 +176,7 @@
   - Điều kiện ngắt ngày mới: `isAllSoldOut()` (hết sạch kho thô, khay đồ chiên, chảo chiên và đơn khách).
   - Modal kết quả ngày hiển thị chi phí Dầu, Rau và Tổn thất đồ chiên ế bị hủy.
 
-- [ ] **Step 1: Sửa đổi bộ kiểm tra hết ngày trong `ShopScene.ts`**
+- [x] **Step 1: Sửa đổi bộ kiểm tra hết ngày trong `ShopScene.ts`**
   - Trong `checkDayEndConditions()`:
     - Xóa bỏ việc kiểm tra `outOfGas` kích hoạt hết ngày:
       ```typescript
@@ -195,18 +195,18 @@
     - Chỉ trigger `this.daySystem.endDay('out_of_stock')` khi thực sự `outOfStock` (cháy hàng hoàn toàn).
     - Thông báo toast: `"🎉 Đã bán sạch bách không còn một xiên nào! Hết ngày rực rỡ!"`.
 
-- [ ] **Step 2: Triển khai Hủy đồ tồn qua ngày trong `advanceToNextDay`**
+- [x] **Step 2: Triển khai Hủy đồ tồn qua ngày trong `advanceToNextDay`**
   - Trong `DaySystem.advanceToNextDay()` hoặc khi kết thúc ngày trong `ShopScene`:
     - Gọi `this.gs.clearDayOldCookedStock()` để xóa sạch toàn bộ `cookedStock` về 0.
     - Đồ tồn bị hủy được lưu lại trong `dailyStats` của ngày vừa rồi để hiển thị lên bảng kết quả.
 
-- [ ] **Step 3: Cập nhật hiển thị trong `ModalScene.ts` (Bảng kết quả ngày)**
+- [x] **Step 3: Cập nhật hiển thị trong `ModalScene.ts` (Bảng kết quả ngày)**
   - Trên modal tổng kết ngày `day_result`:
     - Thêm dòng: `Chi phí dầu chiên: -Xđ` (nếu có).
     - Thêm dòng: `Chi phí rau ăn kèm: -Yđ` (nếu có).
     - Thêm dòng cảnh báo màu đỏ/cam: `Đồ chiên ế bỏ đi: Z xiên (-Wđ)` (nếu `wastedFoodCount > 0`).
 
-- [ ] **Step 4: Kiểm tra với `npm run typecheck`**
+- [x] **Step 4: Kiểm tra với `npm run typecheck`**
 
 ---
 
@@ -222,7 +222,7 @@
   - Khay rau ăn kèm tương tác (click để gắp rau cho khách đang cần, click nút `+` để nhập thêm rau).
   - Khối hiển thị Chảo dầu: Thanh % chất lượng dầu, màu dầu (vàng/nâu/đen) và nút "Thay Dầu 30k".
 
-- [ ] **Step 1: Tạo UI Khay Rau Ăn Kèm trên bàn phục vụ**
+- [x] **Step 1: Tạo UI Khay Rau Ăn Kèm trên bàn phục vụ**
   - Vị trí: Bố trí ở khu vực bàn thao tác phục vụ (cạnh các khay cá viên hoặc góc trên khu phục vụ).
   - Thành phần giao diện:
     - Hộp đựng đĩa dưa leo & đồ chua (vector shape bo góc với texture đĩa rau bắt mắt).
@@ -234,7 +234,7 @@
       - Nếu không có khách nào cần rau: hiện toast nhẹ `"Không có khách nào cần thêm rau lúc này"`.
       - Nếu hết rau (`veggieStock === 0`): hiện toast `"Hết rau ăn kèm rồi! Bấm '+' để mua thêm"`.
 
-- [ ] **Step 2: Tạo UI Trạng thái Dầu Chiên & Nút Thay Dầu cạnh Bếp chiên**
+- [x] **Step 2: Tạo UI Trạng thái Dầu Chiên & Nút Thay Dầu cạnh Bếp chiên**
   - Vị trí: Bố trí ngay trên hoặc bên cạnh khu vực chảo chiên / bình gas.
   - Thành phần giao diện:
     - Icon chảo dầu với màu dầu thay đổi động:
@@ -245,10 +245,10 @@
     - Nút `"Thay Dầu (30k)"`:
       - Khi bấm: gọi `gs.changeCookingOil()`, phát âm thanh rót dầu/pop, cập nhật màu dầu trở lại vàng óng 100%.
 
-- [ ] **Step 3: Cập nhật phản hồi thời gian thực khi trạng thái thay đổi**
+- [x] **Step 3: Cập nhật phản hồi thời gian thực khi trạng thái thay đổi**
   - Lắng nghe sự kiện `state-changed` từ `GameStateManager` để refresh ngay lập tức số lượng rau và màu sắc dầu chiên.
 
-- [ ] **Step 4: Kiểm tra với `npm run typecheck`**
+- [x] **Step 4: Kiểm tra với `npm run typecheck`**
 
 ---
 
@@ -257,15 +257,15 @@
 **Files:**
 - Toàn bộ các files sửa đổi trong Tasks 1 - 5
 
-- [ ] **Step 1: Chạy Typecheck toàn dự án**
+- [x] **Step 1: Chạy Typecheck toàn dự án**
   - Lệnh: `npm run typecheck`
   - Kết quả mong đợi: `0 errors`.
 
-- [ ] **Step 2: Chạy Production Build**
+- [x] **Step 2: Chạy Production Build**
   - Lệnh: `npm run build`
   - Kết quả mong đợi: Vite bundle thành công các file tĩnh vào thư mục `dist/`.
 
-- [ ] **Step 3: Kiểm tra hồi quy giao diện trên cả 2 chế độ hiển thị**
+- [x] **Step 3: Kiểm tra hồi quy giao diện trên cả 2 chế độ hiển thị**
   - Kiểm tra layout trên Portrait (420x780 mobile).
   - Kiểm tra layout trên Landscape (1280x720 desktop).
   - Đảm bảo các nút tương tác Khay rau và Thay dầu không che khuất khay đồ chiên hay khách hàng.

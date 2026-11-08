@@ -44,6 +44,10 @@ export class ShopScene extends Phaser.Scene {
   private gasFillBar!: Phaser.GameObjects.Graphics;
   private gasPercentText!: Phaser.GameObjects.Text;
   private gasRefillBtnLbl!: Phaser.GameObjects.Text;
+  private oilFillBar!: Phaser.GameObjects.Graphics;
+  private oilPercentText!: Phaser.GameObjects.Text;
+  private oilChangeBtnLbl!: Phaser.GameObjects.Text;
+  private veggieStockText!: Phaser.GameObjects.Text;
   private primaryQuickBtnTxt!: Phaser.GameObjects.Text;
   private secondaryQuickBtnTxt!: Phaser.GameObjects.Text;
   private todayRevenueText!: Phaser.GameObjects.Text;
@@ -327,6 +331,64 @@ export class ShopScene extends Phaser.Scene {
           color: '#4ade80',
         })
         .setOrigin(0.5);
+
+      // Veggie Station Widget (Top-Right of Street Counter: `x: 590, y: 134`)
+      const veggieCon = this.add.container(590, 134);
+      const vBg = this.add.graphics();
+      vBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
+      vBg.fillRoundedRect(-76, -26, 152, 52, 8);
+      vBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      vBg.strokeRoundedRect(-76, -26, 152, 52, 8);
+      veggieCon.add(vBg);
+
+      this.veggieStockText = this.add
+        .text(-12, -10, `🥒 Rau: ${this.gs.state.veggieStock}`, {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '11px',
+          fontStyle: '800',
+          color: '#4ade80',
+        })
+        .setOrigin(0.5);
+      veggieCon.add(this.veggieStockText);
+
+      // Button: + Nhập rau (15k)
+      const restockBtnBg = this.add.graphics();
+      restockBtnBg.fillStyle(0x0f766e, 1);
+      restockBtnBg.fillRoundedRect(36, -20, 32, 20, 4);
+      const restockBtnLbl = this.add
+        .text(52, -10, '+15k', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const restockHit = this.add
+        .rectangle(52, -10, 34, 22, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      restockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        this.triggerRestockVeggie();
+      });
+      veggieCon.add([restockBtnBg, restockBtnLbl, restockHit]);
+
+      // Button: GẮP RAU [Phím V]
+      const serveVeggieBtnBg = this.add.graphics();
+      serveVeggieBtnBg.fillStyle(0x15803d, 1);
+      serveVeggieBtnBg.fillRoundedRect(-70, 7, 140, 20, 4);
+      const serveVeggieBtnLbl = this.add
+        .text(0, 17, 'GẮP RAU CHO KHÁCH [V]', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const serveVeggieHit = this.add
+        .rectangle(0, 17, 140, 20, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      serveVeggieHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
+      veggieCon.add([serveVeggieBtnBg, serveVeggieBtnLbl, serveVeggieHit]);
     } else {
       this.player = new Player(this, 48, 178);
       this.add.existing(this.player);
@@ -368,6 +430,64 @@ export class ShopScene extends Phaser.Scene {
           color: '#4ade80',
         })
         .setOrigin(0.5);
+
+      // Mobile Veggie Station Widget (Opposite to Revenue chalkboard: `x: 350, y: 110`)
+      const mobileVeggieCon = this.add.container(350, 110);
+      const mvBg = this.add.graphics();
+      mvBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
+      mvBg.fillRoundedRect(-52, -20, 104, 40, 6);
+      mvBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      mvBg.strokeRoundedRect(-52, -20, 104, 40, 6);
+      mobileVeggieCon.add(mvBg);
+
+      this.veggieStockText = this.add
+        .text(-12, -8, `🥒 Rau: ${this.gs.state.veggieStock}`, {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: '#4ade80',
+        })
+        .setOrigin(0.5);
+      mobileVeggieCon.add(this.veggieStockText);
+
+      // Restock small button (+15k)
+      const mRestockBtnBg = this.add.graphics();
+      mRestockBtnBg.fillStyle(0x0f766e, 1);
+      mRestockBtnBg.fillRoundedRect(24, -16, 24, 16, 4);
+      const mRestockBtnLbl = this.add
+        .text(36, -8, '+', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '10px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const mRestockHit = this.add
+        .rectangle(36, -8, 24, 16, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        this.triggerRestockVeggie();
+      });
+      mobileVeggieCon.add([mRestockBtnBg, mRestockBtnLbl, mRestockHit]);
+
+      // Serve Veggie button
+      const mServeBtnBg = this.add.graphics();
+      mServeBtnBg.fillStyle(0x15803d, 1);
+      mServeBtnBg.fillRoundedRect(-46, 5, 92, 14, 3);
+      const mServeBtnLbl = this.add
+        .text(0, 12, 'GẮP RAU [V]', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const mServeHit = this.add
+        .rectangle(0, 12, 92, 14, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      mServeHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
+      mobileVeggieCon.add([mServeBtnBg, mServeBtnLbl, mServeHit]);
     }
 
     // Build intelligent Day 1 Tutorial Guidance Banner across the street stall counter
@@ -508,18 +628,17 @@ export class ShopScene extends Phaser.Scene {
 
   private buildCookingStation(): void {
     if (this.isDesktop) {
-      // Left: Registered Gas Tank Widget (`x: 88, y: 494`)
-      const gasCon = this.add.container(88, 494);
+      // Left Top: Registered Gas Tank Widget (`x: 88, y: 430`)
+      const gasCon = this.add.container(88, 430);
       const gasPanel = this.add.graphics();
       gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      gasPanel.fillRoundedRect(-50, -124, 100, 248, 10);
+      gasPanel.fillRoundedRect(-50, -58, 100, 116, 8);
       gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      gasPanel.strokeRoundedRect(-50, -124, 100, 248, 10);
+      gasPanel.strokeRoundedRect(-50, -58, 100, 116, 8);
       gasCon.add(gasPanel);
 
       if (this.textures.exists('equip_gas_tank')) {
-        // Processed by SpriteForgeProcessor to 200x260 without border bars!
-        const gasImg = this.add.image(0, -34, 'equip_gas_tank').setScale(0.46);
+        const gasImg = this.add.image(0, -22, 'equip_gas_tank').setScale(0.32);
         gasCon.add(gasImg);
       }
 
@@ -527,9 +646,9 @@ export class ShopScene extends Phaser.Scene {
       gasCon.add(this.gasFillBar);
 
       this.gasPercentText = this.add
-        .text(0, 52, 'Gas: 100%', {
+        .text(0, 14, 'Gas: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '12.5px',
+          fontSize: '11px',
           fontStyle: '800',
           color: TASTE_THEME.colors.inkOnDark,
         })
@@ -538,11 +657,11 @@ export class ShopScene extends Phaser.Scene {
 
       const refillBtnBg = this.add.graphics();
       refillBtnBg.fillStyle(TASTE_THEME.colors.accentAmber, 1);
-      refillBtnBg.fillRoundedRect(-40, 74, 80, 28, 6);
+      refillBtnBg.fillRoundedRect(-42, 28, 84, 22, 5);
       this.gasRefillBtnLbl = this.add
-        .text(0, 88, '+ ĐỔI GAS [G]', {
+        .text(0, 39, '+ BƠM GAS [G]', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '10.5px',
+          fontSize: '9.5px',
           fontStyle: '800',
           color: '#ffffff',
         })
@@ -550,11 +669,64 @@ export class ShopScene extends Phaser.Scene {
       gasCon.add([refillBtnBg, this.gasRefillBtnLbl]);
 
       const gasHit = this.add
-        .rectangle(0, 0, 100, 248, 0xffffff, 0)
+        .rectangle(0, 0, 100, 116, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       gasHit.on('pointerdown', () => this.triggerRefillGas());
       gasCon.add(gasHit);
+
+      // Left Bottom: Cooking Oil Widget (`x: 88, y: 556`)
+      const oilCon = this.add.container(88, 556);
+      const oilPanel = this.add.graphics();
+      oilPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      oilPanel.fillRoundedRect(-50, -58, 100, 116, 8);
+      oilPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      oilPanel.strokeRoundedRect(-50, -58, 100, 116, 8);
+      oilCon.add(oilPanel);
+
+      const oilTitle = this.add
+        .text(0, -38, '🛢️ CHẢO DẦU', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '10px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkGold,
+        })
+        .setOrigin(0.5);
+      oilCon.add(oilTitle);
+
+      this.oilFillBar = this.add.graphics();
+      oilCon.add(this.oilFillBar);
+
+      this.oilPercentText = this.add
+        .text(0, 14, 'Dầu: 100%', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '10.5px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkOnDark,
+        })
+        .setOrigin(0.5);
+      oilCon.add(this.oilPercentText);
+
+      const changeOilBtnBg = this.add.graphics();
+      changeOilBtnBg.fillStyle(0xd97706, 1);
+      changeOilBtnBg.fillRoundedRect(-42, 28, 84, 22, 5);
+      this.oilChangeBtnLbl = this.add
+        .text(0, 39, 'THAY DẦU [O]', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      oilCon.add([changeOilBtnBg, this.oilChangeBtnLbl]);
+
+      const oilHit = this.add
+        .rectangle(0, 0, 100, 116, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      oilHit.on('pointerdown', () => this.triggerChangeOil());
+      oilCon.add(oilHit);
+
       this.refreshGasUI();
+      this.refreshOilUI();
 
       // Center: 2x2 Grid of Fryer Baskets (`x: 152..526, y: 370..618`)
       const slotW = 176;
@@ -646,33 +818,29 @@ export class ShopScene extends Phaser.Scene {
       );
     } else {
       // Mobile Cooking Station (`x: 12..408, y: 552..714`)
-      this.add.text(22, 557, '🔥 TRẠM BẾP CHIÊN & GAS', {
+      this.add.text(22, 557, '🔥 BẾP CHIÊN & NHIÊN LIỆU', {
         fontFamily: TASTE_THEME.fonts.sans,
         fontSize: '10.5px',
         fontStyle: '800',
         color: TASTE_THEME.colors.inkGold,
       });
 
-      const gasCon = this.add.container(52, 641);
+      // Gas Tank Mini Box (`x: 52, y: 606`)
+      const gasCon = this.add.container(52, 606);
       const gasPanel = this.add.graphics();
       gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      gasPanel.fillRoundedRect(-32, -60, 64, 120, 8);
+      gasPanel.fillRoundedRect(-32, -26, 64, 52, 6);
       gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      gasPanel.strokeRoundedRect(-32, -60, 64, 120, 8);
+      gasPanel.strokeRoundedRect(-32, -26, 64, 52, 6);
       gasCon.add(gasPanel);
-
-      if (this.textures.exists('equip_gas_tank')) {
-        const gasImg = this.add.image(0, -18, 'equip_gas_tank').setScale(0.26);
-        gasCon.add(gasImg);
-      }
 
       this.gasFillBar = this.add.graphics();
       gasCon.add(this.gasFillBar);
 
       this.gasPercentText = this.add
-        .text(0, 26, 'Gas: 100%', {
+        .text(0, -6, 'Gas: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9.5px',
+          fontSize: '9px',
           fontStyle: '800',
           color: TASTE_THEME.colors.inkOnDark,
         })
@@ -680,23 +848,65 @@ export class ShopScene extends Phaser.Scene {
       gasCon.add(this.gasPercentText);
 
       this.gasRefillBtnLbl = this.add
-        .text(0, 44, '+ ĐỔI GAS', {
+        .text(0, 13, '+ GAS', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontStyle: '800',
           color: '#ffffff',
           backgroundColor: '#d97706',
-          padding: { left: 5, right: 5, top: 2, bottom: 2 },
+          padding: { left: 4, right: 4, top: 1, bottom: 1 },
         })
         .setOrigin(0.5);
       gasCon.add(this.gasRefillBtnLbl);
 
       const gasHit = this.add
-        .rectangle(0, 0, 64, 120, 0xffffff, 0)
+        .rectangle(0, 0, 64, 52, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       gasHit.on('pointerdown', () => this.triggerRefillGas());
       gasCon.add(gasHit);
+
+      // Cooking Oil Mini Box (`x: 52, y: 666`)
+      const oilCon = this.add.container(52, 666);
+      const oilPanel = this.add.graphics();
+      oilPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      oilPanel.fillRoundedRect(-32, -26, 64, 52, 6);
+      oilPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      oilPanel.strokeRoundedRect(-32, -26, 64, 52, 6);
+      oilCon.add(oilPanel);
+
+      this.oilFillBar = this.add.graphics();
+      oilCon.add(this.oilFillBar);
+
+      this.oilPercentText = this.add
+        .text(0, -6, 'Dầu: 100%', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkOnDark,
+        })
+        .setOrigin(0.5);
+      oilCon.add(this.oilPercentText);
+
+      this.oilChangeBtnLbl = this.add
+        .text(0, 13, 'THAY DẦU', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8.5px',
+          fontStyle: '800',
+          color: '#ffffff',
+          backgroundColor: '#b45309',
+          padding: { left: 4, right: 4, top: 1, bottom: 1 },
+        })
+        .setOrigin(0.5);
+      oilCon.add(this.oilChangeBtnLbl);
+
+      const oilHit = this.add
+        .rectangle(0, 0, 64, 52, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      oilHit.on('pointerdown', () => this.triggerChangeOil());
+      oilCon.add(oilHit);
+
       this.refreshGasUI();
+      this.refreshOilUI();
 
       const slotW = 106;
       const slotH = 56;
@@ -794,6 +1004,8 @@ export class ShopScene extends Phaser.Scene {
     const assisted = this.gs.ensureMinimumPrepCapital();
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
+    this.refreshOilUI();
+    this.refreshVeggieUI();
     this.refreshAllTraysAndCustomers();
     this.refreshDay1GuidanceHint();
     for (let i = 0; i < 4; i++) {
@@ -847,6 +1059,8 @@ export class ShopScene extends Phaser.Scene {
     this.daySystem.startSellingDay();
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
+    this.refreshOilUI();
+    this.refreshVeggieUI();
     this.refreshAllTraysAndCustomers();
     this.refreshDay1GuidanceHint();
 
@@ -991,6 +1205,14 @@ export class ShopScene extends Phaser.Scene {
 
     this.input.keyboard.on('keydown-R', () => {
       if (!this.daySystem.isPaused) this.triggerRestockAll();
+    });
+
+    this.input.keyboard.on('keydown-O', () => {
+      if (!this.daySystem.isPaused) this.triggerChangeOil();
+    });
+
+    this.input.keyboard.on('keydown-V', () => {
+      if (!this.daySystem.isPaused) this.triggerServeVeggieToCustomer();
     });
   }
 
@@ -1199,6 +1421,8 @@ export class ShopScene extends Phaser.Scene {
 
     this.gs.on('state-changed', () => {
       this.refreshGasUI();
+      this.refreshOilUI();
+      this.refreshVeggieUI();
       this.todayRevenueText.setText(this.gs.formatCurrency(this.gs.dailyStats.revenue));
       this.refreshAllTraysAndCustomers();
     });
@@ -1506,6 +1730,90 @@ export class ShopScene extends Phaser.Scene {
     this.gasPercentText.setText(`Gas: ${Math.round(ratio * 100)}%`);
   }
 
+  private refreshOilUI(): void {
+    if (!this.oilFillBar || !this.oilPercentText) return;
+    const ratio = Phaser.Math.Clamp(this.gs.state.oilQuality / 100, 0, 1);
+    this.oilFillBar.clear();
+    const barW = this.isDesktop ? 76 : 48;
+    const barY = this.isDesktop ? -10 : -10;
+    this.oilFillBar.fillStyle(TASTE_THEME.colors.bgBase, 1);
+    this.oilFillBar.fillRoundedRect(-barW / 2, barY, barW, 7, 3);
+
+    const status = this.gs.getOilStatus();
+    const barColor =
+      status === 'fresh'
+        ? 0xeab308 // Vàng óng
+        : status === 'degraded'
+          ? 0xb45309 // Nâu sẫm
+          : 0x1c1917; // Đen khét
+    this.oilFillBar.fillStyle(barColor, 1);
+    this.oilFillBar.fillRoundedRect(-barW / 2, barY, Math.max(4, barW * ratio), 7, 3);
+
+    const statusLabel = status === 'fresh' ? 'Vàng' : status === 'degraded' ? 'Nâu' : 'Khét!';
+    this.oilPercentText.setText(`Dầu: ${Math.round(ratio * 100)}% (${statusLabel})`);
+    if (status === 'burned') {
+      this.oilPercentText.setColor('#ef4444');
+    } else if (status === 'degraded') {
+      this.oilPercentText.setColor('#f59e0b');
+    } else {
+      this.oilPercentText.setColor(TASTE_THEME.colors.inkOnDark);
+    }
+  }
+
+  private refreshVeggieUI(): void {
+    if (!this.veggieStockText) return;
+    this.veggieStockText.setText(`🥒 Rau: ${this.gs.state.veggieStock}`);
+    this.veggieStockText.setColor(this.gs.state.veggieStock <= 3 ? '#ef4444' : '#4ade80');
+  }
+
+  private triggerChangeOil(): void {
+    const res = this.gs.changeCookingOil();
+    if (res.ok) {
+      this.refreshOilUI();
+      SoundManager.playPop();
+      this.showToast('🛢️ Đã thay chảo dầu mới vàng óng! (-30.000đ)', TASTE_THEME.colors.success);
+    } else if (res.reason) {
+      SoundManager.playError();
+      this.showToast(res.reason, TASTE_THEME.colors.danger);
+    }
+  }
+
+  private triggerServeVeggieToCustomer(): void {
+    let servedIndex = -1;
+    for (let i = 0; i < 4; i++) {
+      const cust = this.customerSystem.activeCustomers[i];
+      if (cust && cust.wantsVeggie && !cust.hasVeggie) {
+        if (this.customerSystem.addVeggieToCustomer(i)) {
+          servedIndex = i;
+          const view = this.customerViews.get(i);
+          if (view) view.refreshOrderState();
+          break;
+        }
+      }
+    }
+
+    if (servedIndex !== -1) {
+      this.refreshVeggieUI();
+      this.showToast(`🥒 Đã gắp rau & đồ chua cho khách #${servedIndex + 1}!`, TASTE_THEME.colors.success);
+    } else if (this.gs.state.veggieStock <= 0) {
+      SoundManager.playError();
+      this.showToast('Đã hết rau ăn kèm! Bấm [+] để mua thêm.', TASTE_THEME.colors.danger);
+    } else {
+      this.showToast('Không có khách nào đang chờ thêm rau.', TASTE_THEME.colors.accentAmber);
+    }
+  }
+
+  private triggerRestockVeggie(): void {
+    const res = this.gs.restockVeggies();
+    if (res.ok) {
+      this.refreshVeggieUI();
+      this.showToast('🥒 Đã nhập thêm 15 phần rau ăn kèm (-15.000đ)', TASTE_THEME.colors.success);
+    } else if (res.reason) {
+      SoundManager.playError();
+      this.showToast(res.reason, TASTE_THEME.colors.danger);
+    }
+  }
+
   private refreshFryerSlotUI(slotIndex: number): void {
     const ui = this.fryerUIs[slotIndex];
     if (!ui) return;
@@ -1805,6 +2113,8 @@ export class ShopScene extends Phaser.Scene {
     this.daySystem.isPaused = false;
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
+    this.refreshOilUI();
+    this.refreshVeggieUI();
     this.refreshAllTraysAndCustomers();
     this.refreshDay1GuidanceHint();
     for (let i = 0; i < 4; i++) {
