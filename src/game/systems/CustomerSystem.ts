@@ -17,6 +17,8 @@ export interface ActiveCustomer {
   textureKey: string;
   greeting: string;
   orders: OrderRequirement[];
+  wantsVeggie: boolean;
+  hasVeggie: boolean;
   maxPatienceMs: number;
   remainingPatienceMs: number;
   mood: CustomerMood;
@@ -140,6 +142,7 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     });
 
     const maxPatienceMs = archetype.patienceSeconds * 1000;
+    const wantsVeggie = Math.random() < 0.55; // 55% khách muốn ăn kèm dưa leo / đồ chua
     const customer: ActiveCustomer = {
       uid: `cust_${this.uidCounter++}`,
       slotIndex: emptySlot,
@@ -147,6 +150,8 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
       textureKey,
       greeting,
       orders,
+      wantsVeggie,
+      hasVeggie: false,
       maxPatienceMs,
       remainingPatienceMs: maxPatienceMs,
       mood: 'happy',
@@ -158,6 +163,17 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     this.emit('customer-spawned', customer);
     this.emit('customers-changed');
     return customer;
+  }
+
+  public addVeggieToCustomer(slotIndex: number): boolean {
+    const cust = this.activeCustomers[slotIndex];
+    if (!cust || !cust.wantsVeggie || cust.hasVeggie) return false;
+    if (!this.gs.consumeVeggie()) return false;
+    cust.hasVeggie = true;
+    SoundManager.playPop();
+    this.emit('customer-veggie-added', cust);
+    this.emit('customers-changed');
+    return true;
   }
 
   public canFulfillCustomer(slotIndex: number): { canServe: boolean; missingFoodIds: string[] } {
@@ -204,9 +220,31 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     // Calculate payment + patience tip + upgrade bonus
     const patienceRatio = cust.remainingPatienceMs / cust.maxPatienceMs;
     const moodMultiplier = patienceRatio > 0.6 ? 1.2 : patienceRatio > 0.3 ? 1.05 : 1.0;
+
+    let veggieBonus = 0;
+    if (cust.wantsVeggie && cust.hasVeggie) {
+      veggieBonus = 4000; // Phụ thu tiền rau 4k
+    }
+
     const rawTotal = cust.totalBasePrice * cust.archetype.tipMultiplier * this.gs.getTipBonusMultiplier() * moodMultiplier;
-    const totalEarned = Math.round(rawTotal / 1000) * 1000;
-    const tipAmount = Math.max(0, totalEarned - cust.totalBasePrice);
+    let tipAmount = Math.max(0, Math.round(rawTotal / 1000) * 1000 - cust.totalBasePrice);
+
+    // Ảnh hưởng của Rau ăn kèm
+    if (cust.wantsVeggie && !cust.hasVeggie) {
+      tipAmount = 0; // Quên rau: không có tiền boa
+    } else if (cust.wantsVeggie && cust.hasVeggie) {
+      tipAmount += 2000; // Khách có đủ dưa leo đồ chua boa thêm 2k
+    }
+
+    // Ảnh hưởng của Dầu chiên
+    const oilStatus = this.gs.getOilStatus();
+    if (oilStatus === 'burned') {
+      tipAmount = 0; // Dầu đen khét: mất sạch tiền boa
+    } else if (oilStatus === 'degraded') {
+      tipAmount = Math.round(tipAmount * 0.5); // Dầu sẫm màu: giảm 50% tiền boa
+    }
+
+    const totalEarned = cust.totalBasePrice + veggieBonus + tipAmount;
 
     this.activeCustomers[slotIndex] = null;
     this.gs.dailyStats.customersServed += 1;
@@ -214,15 +252,20 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     this.gs.state.stats.totalServed += 1;
     this.gs.addMoney(totalEarned, true);
 
-    // Custom XP and Rating rewards based on customer archetype
+    // Custom XP and Rating rewards based on customer archetype & oil quality
     const xpReward = cust.archetype.id === 'vip' ? 55 : cust.archetype.id === 'bad' ? 18 : 22;
     this.gs.addXp(xpReward);
 
-    const starRating = cust.archetype.id === 'vip'
+    let starRating = cust.archetype.id === 'vip'
       ? 5.0
       : cust.archetype.id === 'bad'
         ? (patienceRatio > 0.5 ? 4.2 : 3.0)
         : (patienceRatio > 0.5 ? 5.0 : 4.3);
+
+    if (oilStatus === 'burned') {
+      starRating = Math.max(1.0, starRating - 1.5); // Dầu đen khét bị trừ sao nặng
+    }
+
     this.gs.addRating(starRating);
 
     SoundManager.playCash();
