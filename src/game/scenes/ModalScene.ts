@@ -993,7 +993,13 @@ export class ModalScene extends Phaser.Scene {
   private renderDailyResultTab(): void {
     const W = this.modalW;
     const d = this.gs.dailyStats;
-    const netProfit = d.revenue - d.ingredientCost - d.gasCost;
+    const totalExpenses =
+      d.ingredientCost +
+      d.gasCost +
+      (d.oilCost || 0) +
+      (d.veggieCost || 0) +
+      (d.wastedFoodCost || 0);
+    const netProfit = d.revenue + d.tipsEarned - totalExpenses;
     const daySys = this.shopScene.daySystem;
 
     // Reason banner at top of daily report
@@ -1023,9 +1029,9 @@ export class ModalScene extends Phaser.Scene {
 
     const card = this.add.graphics();
     card.fillStyle(0xffffff, 1);
-    card.fillRoundedRect(20, 144, W - 40, 310, 12);
+    card.fillRoundedRect(20, 144, W - 40, 340, 12);
     card.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
-    card.strokeRoundedRect(20, 144, W - 40, 310, 12);
+    card.strokeRoundedRect(20, 144, W - 40, 340, 12);
     this.contentContainer.add(card);
 
     const lines: Array<[string, string, string]> = [
@@ -1035,27 +1041,43 @@ export class ModalScene extends Phaser.Scene {
       ['Tiền Tip khách thưởng', `+${this.gs.formatCurrency(d.tipsEarned)}`, '#0f766e'],
       ['Chi phí nhập nguyên liệu', `-${this.gs.formatCurrency(d.ingredientCost)}`, '#c92a2a'],
       ['Chi phí bơm bình Gas', `-${this.gs.formatCurrency(d.gasCost)}`, '#c92a2a'],
-      ['────────────────────', '──────────', '#9ca3af'],
-      [
-        'LỢI NHUẬN RÒNG HÔM NAY',
-        `${netProfit >= 0 ? '+' : ''}${this.gs.formatCurrency(netProfit)}`,
-        netProfit >= 0 ? '#1f8a4c' : '#c92a2a',
-      ],
     ];
 
+    if ((d.oilCost || 0) > 0) {
+      lines.push(['Chi phí thay dầu chiên', `-${this.gs.formatCurrency(d.oilCost!)}`, '#c92a2a']);
+    }
+    if ((d.veggieCost || 0) > 0) {
+      lines.push(['Chi phí mua rau ăn kèm', `-${this.gs.formatCurrency(d.veggieCost!)}`, '#c92a2a']);
+    }
+    if ((d.wastedFoodCount || 0) > 0) {
+      lines.push([
+        `Đồ chiên ế bỏ đi (${d.wastedFoodCount} xiên)`,
+        `-${this.gs.formatCurrency(d.wastedFoodCost || 0)}`,
+        '#d97706',
+      ]);
+    }
+
+    lines.push(['────────────────────', '──────────', '#9ca3af']);
+    lines.push([
+      'LỢI NHUẬN RÒNG HÔM NAY',
+      `${netProfit >= 0 ? '+' : ''}${this.gs.formatCurrency(netProfit)}`,
+      netProfit >= 0 ? '#1f8a4c' : '#c92a2a',
+    ]);
+
+    const lineSpacing = Math.min(32, Math.floor(300 / lines.length));
     lines.forEach(([label, val, color], idx) => {
-      const ly = 162 + idx * 34;
+      const ly = 158 + idx * lineSpacing;
       const isTotal = idx === lines.length - 1;
       const lTxt = this.add.text(36, ly, label, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: isTotal ? '13.5px' : '12.5px',
+        fontSize: isTotal ? '13px' : '11.5px',
         fontStyle: isTotal ? '800' : '600',
         color: TASTE_THEME.colors.inkDark,
       });
       const vTxt = this.add
         .text(W - 36, ly, val, {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: isTotal ? '14.5px' : '13px',
+          fontSize: isTotal ? '13.5px' : '12px',
           fontStyle: '800',
           color,
         })

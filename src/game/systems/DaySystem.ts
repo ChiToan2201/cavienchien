@@ -145,9 +145,9 @@ export class DaySystem extends Phaser.Events.EventEmitter {
       case 'time_up':
         return '⏰ Hết giờ: Đã kết thúc 6 phút mở bán tối đa trong ngày';
       case 'out_of_gas':
-        return '⛽ Kết thúc sớm: Bình Gas đã cạn sạch trong giờ bán';
+        return '⛽ Tạm ngưng: Bình Gas đã cạn sạch';
       case 'out_of_stock':
-        return '📦 Kết thúc sớm: Đã hết sạch nguyên liệu trong Kho';
+        return '🎉 Cháy hàng: Quán đã bán sạch bách toàn bộ kho & khay đồ chiên!';
       case 'manual':
         return '🌙 Kết thúc sớm: Chủ quán chủ động đóng cửa sớm';
       default:

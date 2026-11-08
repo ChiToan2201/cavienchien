@@ -778,6 +778,14 @@ export class ShopScene extends Phaser.Scene {
     this.customerViews.clear();
 
     if (advanceDay) {
+      // Hủy sạch toàn bộ đồ chiên tồn khay qua ngày vì không bán đồ cũ qua đêm
+      const wasted = this.gs.clearDayOldCookedStock();
+      if (wasted.count > 0) {
+        this.showToast(
+          `🗑️ Đã bỏ ${wasted.count} xiên đồ chiên cũ qua đêm (-${this.gs.formatCurrency(wasted.cost)})`,
+          TASTE_THEME.colors.accentAmber
+        );
+      }
       this.daySystem.advanceToNextDay();
     } else {
       this.daySystem.enterPrepPhase(false);
@@ -1809,41 +1817,37 @@ export class ShopScene extends Phaser.Scene {
       return;
     }
 
-    // Wait while any fryer slot is still actively cooking so the last batch finishes frying
+    // Chờ cho mẻ đang chiên hoàn thành
     if (this.cookingSystem.hasCookingSlot()) {
       return;
     }
 
-    const outOfGas = !this.gs.hasEnoughGasToCook();
-    const outOfStock = !this.gs.hasCookableRawStock();
+    const totalRaw = this.gs.getTotalRawStock();
+    const totalCooked = this.gs.getUnlockedFoods().reduce(
+      (sum, f) => sum + (this.gs.state.foods[f.id]?.cookedStock || 0),
+      0
+    );
+    const hasActiveCooking = this.cookingSystem.hasActiveSlot();
+    const activeCustCount = this.customerSystem.activeCustomers.filter(Boolean).length;
 
-    if (!outOfGas && !outOfStock) {
+    // Cơ chế kết thúc ngày mới: Chỉ kết thúc khi BÁN SẠCH HÀNG trong kho và trên khay!
+    // Không còn tự động kết thúc ngày vì hết bình gas.
+    const isSoldOut = totalRaw === 0 && totalCooked === 0 && !hasActiveCooking && activeCustCount === 0;
+
+    if (!isSoldOut) {
       return;
     }
 
     this.endDayPending = true;
 
-    // Auto-collect any ready batches onto trays so player gets full XP & stock
+    // Tự động thu gom các mẻ chín cuối cùng (nếu có)
     this.cookingSystem.collectAllReadySlots();
 
-    // Auto-serve any waiting customers whose orders can now be fulfilled
-    for (let i = 0; i < 4; i++) {
-      const cust = this.customerSystem.activeCustomers[i];
-      if (cust && this.customerSystem.canFulfillCustomer(i).canServe) {
-        this.onCustomerTapped(i);
-      }
-    }
-
-    const reason = outOfGas ? 'out_of_gas' : 'out_of_stock';
-    const msg = outOfGas
-      ? '⛽ Đã hết bình Gas! Kết thúc 1 ngày bán hàng...'
-      : '📦 Đã hết đồ trong Kho! Kết thúc 1 ngày bán hàng...';
-
     SoundManager.playDing();
-    this.showToast(msg, TASTE_THEME.colors.danger);
+    this.showToast('🎉 Đã bán sạch bách không còn một xiên nào! Hết ngày rực rỡ!', TASTE_THEME.colors.success);
 
-    this.time.delayedCall(650, () => {
-      this.daySystem.endDay(reason);
+    this.time.delayedCall(700, () => {
+      this.daySystem.endDay('out_of_stock');
     });
   }
 
