@@ -65,7 +65,9 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
         // Customer walks away angry
         this.activeCustomers[i] = null;
         this.gs.dailyStats.customersMissed += 1;
-        this.gs.addRating(2.0);
+        // Troublemaker or VIP walking away angry gives severe rating penalties
+        const penaltyRating = cust.archetype.id === 'bad' ? 1.0 : cust.archetype.id === 'vip' ? 1.5 : 2.0;
+        this.gs.addRating(penaltyRating);
         SoundManager.playError();
         this.emit('customer-left-angry', cust);
         this.emit('customers-changed');
@@ -211,8 +213,17 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
     this.gs.dailyStats.tipsEarned += tipAmount;
     this.gs.state.stats.totalServed += 1;
     this.gs.addMoney(totalEarned, true);
-    this.gs.addXp(22);
-    this.gs.addRating(patienceRatio > 0.5 ? 5.0 : 4.3);
+
+    // Custom XP and Rating rewards based on customer archetype
+    const xpReward = cust.archetype.id === 'vip' ? 55 : cust.archetype.id === 'bad' ? 18 : 22;
+    this.gs.addXp(xpReward);
+
+    const starRating = cust.archetype.id === 'vip'
+      ? 5.0
+      : cust.archetype.id === 'bad'
+        ? (patienceRatio > 0.5 ? 4.2 : 3.0)
+        : (patienceRatio > 0.5 ? 5.0 : 4.3);
+    this.gs.addRating(starRating);
 
     SoundManager.playCash();
     this.emit('customer-served', cust, totalEarned, tipAmount);

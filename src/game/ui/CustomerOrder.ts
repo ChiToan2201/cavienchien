@@ -57,17 +57,27 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     });
 
     // Customer Archetype Pill Badge under character
+    const isVip = this.customer.archetype.id === 'vip';
+    const isBad = this.customer.archetype.id === 'bad';
+    const badgeW = isVip || isBad ? 96 : 88;
+
     const badgeBg = this.scene.add.graphics();
     badgeBg.fillStyle(this.customer.archetype.badgeColor, 1);
-    badgeBg.fillRoundedRect(-44, 53, 88, 16, 6);
-    badgeBg.lineStyle(1, TASTE_THEME.colors.bgBase, 0.45);
-    badgeBg.strokeRoundedRect(-44, 53, 88, 16, 6);
+    badgeBg.fillRoundedRect(-badgeW / 2, 53, badgeW, 16, 6);
+    badgeBg.lineStyle(isVip ? 1.5 : 1, isVip ? 0xfff3b0 : TASTE_THEME.colors.bgBase, isVip ? 0.9 : 0.45);
+    badgeBg.strokeRoundedRect(-badgeW / 2, 53, badgeW, 16, 6);
+
+    const displayName = isVip
+      ? `👑 ${this.customer.archetype.name}`
+      : isBad
+        ? `⚡ ${this.customer.archetype.name}`
+        : this.customer.archetype.name;
 
     const nameLbl = this.scene.add
-      .text(0, 61, this.customer.archetype.name, {
+      .text(0, 61, displayName, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '9.5px',
-        fontStyle: '700',
+        fontSize: isVip || isBad ? '8.5px' : '9.5px',
+        fontStyle: '800',
         color: '#ffffff',
       })
       .setOrigin(0.5);
@@ -185,7 +195,12 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
       1
     );
 
-    const emoji = ratio > 0.55 ? '😄' : ratio > 0.25 ? '😐' : '😡';
+    let emoji = ratio > 0.55 ? '😄' : ratio > 0.25 ? '😐' : '😡';
+    if (this.customer.archetype.id === 'vip') {
+      emoji = ratio > 0.55 ? '🤩' : ratio > 0.25 ? '🙂' : '⏱️';
+    } else if (this.customer.archetype.id === 'bad') {
+      emoji = ratio > 0.55 ? '😒' : ratio > 0.25 ? '😠' : '🤬';
+    }
     this.moodText.setText(emoji);
 
     const barColor =

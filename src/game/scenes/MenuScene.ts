@@ -353,13 +353,13 @@ export class MenuScene extends Phaser.Scene {
     stageCon.add(stageFloor);
 
     const lineup: Array<{ key: string; frame?: number; scale: number }> = [
+      { key: 'cust_bad_bully', scale: 0.37 },
       { key: 'cust_student_boy', scale: 0.37 },
-      { key: 'cust_girl', scale: 0.37 },
-      { key: 'cust_college', scale: 0.37 },
+      { key: 'cust_vip_reviewer', scale: 0.37 },
       { key: 'chef_raw', frame: 3, scale: 0.43 },
-      { key: 'cust_office', scale: 0.37 },
-      { key: 'cust_worker', scale: 0.37 },
-      { key: 'cust_grandma', scale: 0.37 },
+      { key: 'cust_vip_rich', scale: 0.37 },
+      { key: 'cust_college', scale: 0.37 },
+      { key: 'cust_bad_cheat', scale: 0.37 },
     ];
 
     const charSpacing = 82;

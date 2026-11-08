@@ -167,7 +167,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('mascot', 'assets/mascot.png');
     this.load.image('mascot_transparent', 'assets/mascot-transparent.png');
 
-    // 2. Characters (Chef 5-frame horizontal sheet + 6 Customer archetypes)
+    // 2. Characters (Chef 5-frame horizontal sheet + 10 Customer archetypes including VIP & Bad)
     this.load.image('chef_raw', 'assets/characters/chef-sheet.png');
     this.load.image('cust_student_boy', 'assets/characters/cust-student-boy.png');
     this.load.image('cust_girl', 'assets/characters/cust-girl.png');
@@ -175,6 +175,10 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('cust_worker', 'assets/characters/cust-worker.png');
     this.load.image('cust_college', 'assets/characters/cust-college.png');
     this.load.image('cust_grandma', 'assets/characters/cust-grandma.png');
+    this.load.image('cust_vip_rich', 'assets/characters/cust-vip-rich.png');
+    this.load.image('cust_vip_reviewer', 'assets/characters/cust-vip-reviewer.png');
+    this.load.image('cust_bad_bully', 'assets/characters/cust-bad-bully.png');
+    this.load.image('cust_bad_cheat', 'assets/characters/cust-bad-cheat.png');
 
     // 3. Equipment
     this.load.image('equip_fryer', 'assets/equipment/fryer.png');
@@ -207,8 +211,8 @@ export class PreloadScene extends Phaser.Scene {
     // 1. Run `agent-sprite-forge` pipeline (`forge_matte` + `forge_core`) on Chef 5-frame sheet
     SpriteForgeProcessor.processSpritesheetTexture(this, 'chef_raw', 5, 220, 280);
 
-    // 2. Register all 6 customer sprites with `feet` anchor so everyone stands on a unified baseline
-    //    and strip border crop remnants (such as the left edge speck on `cust_student_boy`)
+    // 2. Register all 10 customer sprites with `feet` anchor so everyone stands on a unified baseline
+    //    and strip border crop remnants
     const customerKeys = [
       'cust_student_boy',
       'cust_girl',
@@ -216,6 +220,10 @@ export class PreloadScene extends Phaser.Scene {
       'cust_worker',
       'cust_college',
       'cust_grandma',
+      'cust_vip_rich',
+      'cust_vip_reviewer',
+      'cust_bad_bully',
+      'cust_bad_cheat',
     ];
     for (const key of customerKeys) {
       SpriteForgeProcessor.processSingleTexture(this, key, {
