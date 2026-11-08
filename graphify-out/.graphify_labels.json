@@ -1,0 +1,18 @@
+{
+  "0": "Player Entity & Chef Gestures",
+  "1": "Taste Theme & Food Data",
+  "2": "Audio Manager & WebAudio Synthesis",
+  "3": "Game State & Upgrades System",
+  "4": "State Persistence & Save Manager",
+  "5": "Shop Management & Modal Dialogs",
+  "6": "Package Dependencies & Tooling",
+  "7": "Game Configuration & Responsive Layout",
+  "8": "Economy & Cooking Systems",
+  "9": "Preload Scene & Sprite Processing",
+  "10": "TypeScript Compiler Configuration",
+  "11": "Customer System & Archetypes",
+  "12": "Day Progression & Daily Cycles",
+  "13": "Food Tray UI & Frying Visuals",
+  "14": "High-DPI Camera & Display Scaling",
+  "15": "Vercel Deployment Settings"
+}
