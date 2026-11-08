@@ -3,7 +3,7 @@ import { INITIAL_FOODS, FoodDefinition } from '../data/foods';
 import { GameStateManager } from '../managers/GameStateManager';
 import { SoundManager } from '../managers/SoundManager';
 import { CookingSystem } from '../systems/CookingSystem';
-import { CustomerSystem, ActiveCustomer } from '../systems/CustomerSystem';
+import { CustomerSystem, ActiveCustomer, SauceType, VeggieType } from '../systems/CustomerSystem';
 import { DaySystem } from '../systems/DaySystem';
 import { EconomySystem } from '../systems/EconomySystem';
 import { InventorySystem } from '../systems/InventorySystem';
@@ -98,6 +98,7 @@ export class ShopScene extends Phaser.Scene {
 
     // 4. 12 Food Trays Glass Showcase Grid (3 Columns x 4 Rows)
     this.buildTwelveTraysGrid();
+    this.buildCondimentStation();
 
     // 5. Industrial Cooking Station (Gas Tank + Fryer Baskets + Quick Actions)
     this.buildCookingStation();
@@ -331,64 +332,6 @@ export class ShopScene extends Phaser.Scene {
           color: '#4ade80',
         })
         .setOrigin(1, 0.5);
-
-      // Top Utility Strip: Veggie Station Widget (`x: 514..692, y: 97..131`)
-      const veggieCon = this.add.container(603, 114);
-      const vBg = this.add.graphics();
-      vBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
-      vBg.fillRoundedRect(-89, -17, 178, 34, 7);
-      vBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      vBg.strokeRoundedRect(-89, -17, 178, 34, 7);
-      veggieCon.add(vBg);
-
-      this.veggieStockText = this.add
-        .text(-50, 0, `🥒 Rau: ${this.gs.state.veggieStock}`, {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '11px',
-          fontStyle: '800',
-          color: '#4ade80',
-        })
-        .setOrigin(0.5);
-      veggieCon.add(this.veggieStockText);
-
-      // Button: +15k (Restock)
-      const restockBtnBg = this.add.graphics();
-      restockBtnBg.fillStyle(0x0f766e, 1);
-      restockBtnBg.fillRoundedRect(-2, -10, 32, 20, 4);
-      const restockBtnLbl = this.add
-        .text(14, 0, '+15k', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
-          fontStyle: '800',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5);
-      const restockHit = this.add
-        .rectangle(14, 0, 34, 22, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      restockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
-        e.event.stopPropagation();
-        this.triggerRestockVeggie();
-      });
-      veggieCon.add([restockBtnBg, restockBtnLbl, restockHit]);
-
-      // Button: GẮP [V]
-      const serveVeggieBtnBg = this.add.graphics();
-      serveVeggieBtnBg.fillStyle(0x15803d, 1);
-      serveVeggieBtnBg.fillRoundedRect(36, -10, 46, 20, 4);
-      const serveVeggieBtnLbl = this.add
-        .text(59, 0, 'GẮP [V]', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
-          fontStyle: '800',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5);
-      const serveVeggieHit = this.add
-        .rectangle(59, 0, 46, 22, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      serveVeggieHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
-      veggieCon.add([serveVeggieBtnBg, serveVeggieBtnLbl, serveVeggieHit]);
     } else {
       this.player = new Player(this, 36, 176);
       this.add.existing(this.player);
@@ -431,64 +374,6 @@ export class ShopScene extends Phaser.Scene {
           color: '#4ade80',
         })
         .setOrigin(1, 0.5);
-
-      // Mobile Top Utility Strip: Veggie Station (`x: 266..404, y: 82..104`)
-      const mobileVeggieCon = this.add.container(335, 93);
-      const mvBg = this.add.graphics();
-      mvBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
-      mvBg.fillRoundedRect(-69, -11, 138, 22, 5);
-      mvBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      mvBg.strokeRoundedRect(-69, -11, 138, 22, 5);
-      mobileVeggieCon.add(mvBg);
-
-      this.veggieStockText = this.add
-        .text(-38, 0, `🥒 ${this.gs.state.veggieStock}`, {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9.5px',
-          fontStyle: '800',
-          color: '#4ade80',
-        })
-        .setOrigin(0.5);
-      mobileVeggieCon.add(this.veggieStockText);
-
-      // Restock small button (+15k)
-      const mRestockBtnBg = this.add.graphics();
-      mRestockBtnBg.fillStyle(0x0f766e, 1);
-      mRestockBtnBg.fillRoundedRect(-5, -8, 26, 16, 3);
-      const mRestockBtnLbl = this.add
-        .text(8, 0, '+15k', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '8px',
-          fontStyle: '800',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5);
-      const mRestockHit = this.add
-        .rectangle(8, 0, 26, 18, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
-        e.event.stopPropagation();
-        this.triggerRestockVeggie();
-      });
-      mobileVeggieCon.add([mRestockBtnBg, mRestockBtnLbl, mRestockHit]);
-
-      // Serve Veggie button
-      const mServeBtnBg = this.add.graphics();
-      mServeBtnBg.fillStyle(0x15803d, 1);
-      mServeBtnBg.fillRoundedRect(27, -8, 38, 16, 3);
-      const mServeBtnLbl = this.add
-        .text(46, 0, 'GẮP [V]', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '8px',
-          fontStyle: '800',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5);
-      const mServeHit = this.add
-        .rectangle(46, 0, 38, 18, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      mServeHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
-      mobileVeggieCon.add([mServeBtnBg, mServeBtnLbl, mServeHit]);
     }
 
     // Build intelligent Day 1 Tutorial Guidance Banner across the street stall counter
@@ -630,6 +515,279 @@ export class ShopScene extends Phaser.Scene {
         this.add.existing(tray);
         this.trays.set(foodDef.id, tray);
       });
+    }
+  }
+
+  private buildCondimentStation(): void {
+    if (this.isDesktop) {
+      // Desktop Serving Condiment Station (`x: 718..1260, y: 494..636`, width 542, height 142)
+      const stationX = 718;
+      const stationY = 494;
+      const stationW = 542;
+      const stationH = 142;
+
+      const stationCon = this.add.container(stationX, stationY);
+
+      // Warm wooden tray background
+      const sBg = this.add.graphics();
+      sBg.fillStyle(0x181411, 0.96);
+      sBg.fillRoundedRect(0, 0, stationW, stationH, { tl: 0, tr: 0, bl: 14, br: 14 });
+      sBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      sBg.strokeRoundedRect(0, 0, stationW, stationH, { tl: 0, tr: 0, bl: 14, br: 14 });
+
+      // Subtle vertical divider between Veggies and Sauces
+      sBg.lineStyle(1, 0x3d3126, 0.8);
+      sBg.lineBetween(271, 10, 271, stationH - 12);
+      stationCon.add(sBg);
+
+      // === LEFT BAY: KHAY RAU ĂN KÈM ===
+      const vHeader = this.add.text(14, 10, '🥗 KHAY RAU ĂN KÈM', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '11px',
+        fontStyle: '800',
+        color: '#4ade80',
+      });
+      this.veggieStockText = this.add.text(14, 26, `Kho: ${this.gs.state.veggieStock}/40 phần`, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10px',
+        fontStyle: '700',
+        color: this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0',
+      });
+
+      // Button: + Nhập rau (15k)
+      const restockBtnBg = this.add.graphics();
+      restockBtnBg.fillStyle(0x0f766e, 1);
+      restockBtnBg.fillRoundedRect(172, 8, 88, 22, 5);
+      const restockBtnLbl = this.add
+        .text(216, 19, '+ Nhập 15k', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const restockHit = this.add
+        .rectangle(216, 19, 88, 24, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      restockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        this.triggerRestockVeggie();
+      });
+      stationCon.add([vHeader, this.veggieStockText, restockBtnBg, restockBtnLbl, restockHit]);
+
+      // 3 Veggie Plates
+      const veggies: Array<{ type: VeggieType; key: string; name: string; keyHint: string }> = [
+        { type: 'dua_leo', key: 'veggie_dua_leo', name: 'Dưa leo', keyHint: '[Z]' },
+        { type: 'dau_bap', key: 'veggie_dau_bap', name: 'Đậu bắp', keyHint: '[X]' },
+        { type: 'xa_lach', key: 'veggie_xa_lach', name: 'Xà lách', keyHint: '[C]' },
+      ];
+
+      veggies.forEach((v, idx) => {
+        const itemX = 14 + idx * 84;
+        const itemY = 48;
+        const itemW = 76;
+        const itemH = 82;
+
+        const card = this.add.container(itemX, itemY);
+        const cBg = this.add.graphics();
+        cBg.fillStyle(0x27211b, 0.95);
+        cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
+        cBg.lineStyle(1, 0x443627, 1);
+        cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        card.add(cBg);
+
+        if (this.textures.exists(v.key)) {
+          const img = this.add.image(itemW / 2, 34, v.key);
+          const maxDim = Math.max(img.width, img.height);
+          img.setScale(Math.min(50 / maxDim, 0.45));
+          card.add(img);
+        }
+
+        const lbl = this.add
+          .text(itemW / 2, 68, `${v.name} ${v.keyHint}`, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '9.5px',
+            fontStyle: '800',
+            color: '#fef08a',
+          })
+          .setOrigin(0.5);
+        card.add(lbl);
+
+        const hit = this.add
+          .rectangle(itemW / 2, itemH / 2, itemW, itemH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerdown', () => {
+          this.tweens.add({
+            targets: card,
+            scale: 0.94,
+            duration: 60,
+            yoyo: true,
+            onComplete: () => this.onVeggieTapped(v.type),
+          });
+        });
+
+        hit.on('pointerover', () => {
+          cBg.lineStyle(1.5, 0x4ade80, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        });
+        hit.on('pointerout', () => {
+          cBg.lineStyle(1, 0x443627, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        });
+
+        card.add(hit);
+        stationCon.add(card);
+      });
+
+      // === RIGHT BAY: QUẦY NƯỚC CHẤM GIA TRUYỀN ===
+      const sHeader = this.add.text(285, 10, '🥢 NƯỚC CHẤM GIA TRUYỀN', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '11px',
+        fontStyle: '800',
+        color: '#fca311',
+      });
+      const sSub = this.add
+        .text(stationW - 14, 11, 'Vô hạn • +2k/đĩa', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9px',
+          fontStyle: '700',
+          color: '#94a3b8',
+        })
+        .setOrigin(1, 0);
+      stationCon.add([sHeader, sSub]);
+
+      // 3 Sauces
+      const sauces: Array<{ type: SauceType; key: string; name: string; keyHint: string; color: number }> = [
+        { type: 'tuong_ot', key: 'sauce_tuong_ot', name: 'Tương Ớt', keyHint: '[V]', color: 0xef4444 },
+        { type: 'tuong_den', key: 'sauce_tuong_den', name: 'Tương Đen', keyHint: '[B]', color: 0xa855f7 },
+        { type: 'tuong_xi_muoi', key: 'sauce_tuong_xi_muoi', name: 'Xí Muội', keyHint: '[N]', color: 0xf59e0b },
+      ];
+
+      sauces.forEach((s, idx) => {
+        const itemX = 285 + idx * 82;
+        const itemY = 36;
+        const itemW = 76;
+        const itemH = 94;
+
+        const card = this.add.container(itemX, itemY);
+        const cBg = this.add.graphics();
+        cBg.fillStyle(0x27211b, 0.95);
+        cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
+        cBg.lineStyle(1, 0x443627, 1);
+        cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        card.add(cBg);
+
+        let bottleImg: Phaser.GameObjects.Image | null = null;
+        if (this.textures.exists(s.key)) {
+          bottleImg = this.add.image(itemW / 2, 40, s.key);
+          const maxDim = Math.max(bottleImg.width, bottleImg.height);
+          bottleImg.setScale(Math.min(54 / maxDim, 0.42));
+          card.add(bottleImg);
+        }
+
+        const lbl = this.add
+          .text(itemW / 2, 80, `${s.name} ${s.keyHint}`, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '9.5px',
+            fontStyle: '800',
+            color: '#fef08a',
+          })
+          .setOrigin(0.5);
+        card.add(lbl);
+
+        const hit = this.add
+          .rectangle(itemW / 2, itemH / 2, itemW, itemH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerdown', () => {
+          if (bottleImg) {
+            this.tweens.add({
+              targets: bottleImg,
+              angle: 15,
+              scaleY: bottleImg.scaleY * 0.88,
+              duration: 80,
+              yoyo: true,
+              onComplete: () => {
+                bottleImg!.setAngle(0);
+              },
+            });
+          }
+          this.tweens.add({
+            targets: card,
+            scale: 0.94,
+            duration: 60,
+            yoyo: true,
+            onComplete: () => this.onSauceTapped(s.type),
+          });
+        });
+
+        hit.on('pointerover', () => {
+          cBg.lineStyle(1.5, s.color, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        });
+        hit.on('pointerout', () => {
+          cBg.lineStyle(1, 0x443627, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        });
+
+        card.add(hit);
+        stationCon.add(card);
+      });
+
+      this.add.existing(stationCon);
+    } else {
+      // Mobile Portrait Condiment Station (`x: 12..408, y: 492..546`, width 396, height 54)
+      const { width: screenW } = getLogicalDimensions();
+      const gut = 12;
+      const cardW = screenW - gut * 2;
+      const mCon = this.add.container(gut, 492);
+
+      const mBg = this.add.graphics();
+      mBg.fillStyle(0x181411, 0.96);
+      mBg.fillRoundedRect(0, 0, cardW, 54, 8);
+      mBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      mBg.strokeRoundedRect(0, 0, cardW, 54, 8);
+      mCon.add(mBg);
+
+      // 3 Veggie mini buttons + 3 Sauce mini buttons
+      const miniButtons: Array<{ label: string; action: () => void; color: number }> = [
+        { label: '🥒 Dưa', action: () => this.onVeggieTapped('dua_leo'), color: 0x22c55e },
+        { label: '🫑 Bắp', action: () => this.onVeggieTapped('dau_bap'), color: 0x22c55e },
+        { label: '🥗 Lách', action: () => this.onVeggieTapped('xa_lach'), color: 0x22c55e },
+        { label: '🌶️ Ớt', action: () => this.onSauceTapped('tuong_ot'), color: 0xef4444 },
+        { label: '🥢 Đen', action: () => this.onSauceTapped('tuong_den'), color: 0xa855f7 },
+        { label: '🍑 XíM', action: () => this.onSauceTapped('tuong_xi_muoi'), color: 0xf59e0b },
+      ];
+
+      const btnW = Math.floor((cardW - 14) / 6);
+      miniButtons.forEach((b, i) => {
+        const bx = 6 + i * btnW;
+        const bBg = this.add.graphics();
+        bBg.fillStyle(0x27211b, 1);
+        bBg.fillRoundedRect(bx, 6, btnW - 4, 42, 6);
+        bBg.lineStyle(1, b.color, 0.8);
+        bBg.strokeRoundedRect(bx, 6, btnW - 4, 42, 6);
+        mCon.add(bBg);
+
+        const bTxt = this.add
+          .text(bx + (btnW - 4) / 2, 27, b.label, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '10px',
+            fontStyle: '800',
+            color: '#ffffff',
+          })
+          .setOrigin(0.5);
+        mCon.add(bTxt);
+
+        const bHit = this.add
+          .rectangle(bx + (btnW - 4) / 2, 27, btnW - 4, 42, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+        bHit.on('pointerdown', () => b.action());
+        mCon.add(bHit);
+      });
+
+      this.add.existing(mCon);
     }
   }
 
@@ -1803,8 +1961,34 @@ export class ShopScene extends Phaser.Scene {
 
   private refreshVeggieUI(): void {
     if (!this.veggieStockText) return;
-    this.veggieStockText.setText(`🥒 Rau: ${this.gs.state.veggieStock}`);
-    this.veggieStockText.setColor(this.gs.state.veggieStock <= 3 ? '#ef4444' : '#4ade80');
+    this.veggieStockText.setText(`Kho: ${this.gs.state.veggieStock}/40 phần`);
+    this.veggieStockText.setColor(this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0');
+  }
+
+  private onVeggieTapped(type: VeggieType): void {
+    const res = this.customerSystem.autoServeVeggie(type);
+    if (res.success) {
+      this.refreshVeggieUI();
+      const name = type === 'dua_leo' ? 'Dưa leo' : type === 'dau_bap' ? 'Đậu bắp' : 'Xà lách';
+      this.showToast(`🥒 Đã gắp ${name} cho khách #${res.customerIndex! + 1}!`, TASTE_THEME.colors.success);
+    } else if (this.gs.state.veggieStock <= 0) {
+      SoundManager.playError();
+      this.showToast(res.reason || 'Đã hết rau trong kho! Bấm [+ Nhập 15k] để mua thêm.', TASTE_THEME.colors.danger);
+    } else {
+      SoundManager.playError();
+      this.showToast(res.reason || 'Không có khách nào đang chờ món rau này!', TASTE_THEME.colors.accentAmber);
+    }
+  }
+
+  private onSauceTapped(type: SauceType): void {
+    const res = this.customerSystem.autoServeSauce(type);
+    if (res.success) {
+      const name = type === 'tuong_ot' ? 'Tương Ớt' : type === 'tuong_den' ? 'Tương Đen' : 'Tương Xí Muội';
+      this.showToast(`🥢 Đã chan ${name} (+2.000đ) cho khách #${res.customerIndex! + 1}!`, TASTE_THEME.colors.success);
+    } else {
+      SoundManager.playError();
+      this.showToast(res.reason || 'Không có khách nào đang chờ loại nước chấm này!', TASTE_THEME.colors.accentAmber);
+    }
   }
 
   private triggerChangeOil(): void {
@@ -1820,28 +2004,8 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private triggerServeVeggieToCustomer(): void {
-    let servedIndex = -1;
-    for (let i = 0; i < 4; i++) {
-      const cust = this.customerSystem.activeCustomers[i];
-      if (cust && cust.wantsVeggie && !cust.hasVeggie) {
-        if (this.customerSystem.addVeggieToCustomer(i)) {
-          servedIndex = i;
-          const view = this.customerViews.get(i);
-          if (view) view.refreshOrderState();
-          break;
-        }
-      }
-    }
-
-    if (servedIndex !== -1) {
-      this.refreshVeggieUI();
-      this.showToast(`🥒 Đã gắp rau & đồ chua cho khách #${servedIndex + 1}!`, TASTE_THEME.colors.success);
-    } else if (this.gs.state.veggieStock <= 0) {
-      SoundManager.playError();
-      this.showToast('Đã hết rau ăn kèm! Bấm [+] để mua thêm.', TASTE_THEME.colors.danger);
-    } else {
-      this.showToast('Không có khách nào đang chờ thêm rau.', TASTE_THEME.colors.accentAmber);
-    }
+    // Default fallback to cucumber
+    this.onVeggieTapped('dua_leo');
   }
 
   private triggerRestockVeggie(): void {
