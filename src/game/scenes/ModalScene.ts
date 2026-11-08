@@ -14,7 +14,8 @@ export type ModalTab =
   | 'inventory'
   | 'achievement'
   | 'daily_result'
-  | 'settings';
+  | 'settings'
+  | 'tutorial';
 
 interface ModalInitData {
   tab: ModalTab;
@@ -155,6 +156,8 @@ export class ModalScene extends Phaser.Scene {
         return `📊 BÁO CÁO NGÀY ${this.gs.state.day}`;
       case 'settings':
         return '⚙️ TẠM DỪNG & CÀI ĐẶT';
+      case 'tutorial':
+        return '📖 CẨM NANG BÁN CÁ VIÊN (NGÀY 1)';
     }
   }
 
@@ -214,6 +217,9 @@ export class ModalScene extends Phaser.Scene {
         break;
       case 'settings':
         this.renderSettingsTab();
+        break;
+      case 'tutorial':
+        this.renderTutorialTab();
         break;
     }
   }
@@ -934,11 +940,25 @@ export class ModalScene extends Phaser.Scene {
       }
     );
 
+    const tutorialBtn = this.createActionButton(
+      W / 2,
+      356,
+      276,
+      44,
+      '📖 Cẩm Nang Hướng Dẫn Ngày 1',
+      TASTE_THEME.colors.accentPrimary,
+      () => {
+        this.currentTab = 'tutorial';
+        this.pageIndex = 0;
+        this.renderCurrentTab();
+      }
+    );
+
     const resetBtn = this.createActionButton(
       W / 2,
-      360,
+      412,
       276,
-      46,
+      42,
       '🗑️ Xóa Dữ Liệu & Chơi Lại',
       TASTE_THEME.colors.danger,
       () => {
@@ -951,15 +971,15 @@ export class ModalScene extends Phaser.Scene {
 
     const guideCard = this.add.graphics();
     guideCard.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
-    guideCard.fillRoundedRect(24, 420, W - 48, 160, 10);
+    guideCard.fillRoundedRect(24, 468, W - 48, 126, 10);
     guideCard.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
-    guideCard.strokeRoundedRect(24, 420, W - 48, 160, 10);
+    guideCard.strokeRoundedRect(24, 468, W - 48, 126, 10);
 
     const guideTxt = this.add
       .text(
         W / 2,
-        500,
-        '💡 HƯỚNG DẪN & PHÍM TẮT NHANH:\n• Trước giờ mở bán: Nhập nguyên liệu vào Kho và bơm đầy bình Gas.\n• Trong giờ bán: Chạm vào khay để chiên (3 viên/mẻ).\n• Canh thanh thời gian chiên: Vớt ngay khi chín vàng, đừng để cháy khét!\n• Phím [SPACE]: Mở bán / Vớt nhanh & Phục vụ khách.',
+        531,
+        '💡 PHÍM TẮT NHANH:\n• [Space]: Mở bán / Vớt cá / Phục vụ khách\n• [1..6]: Chọn nhanh món để chiên vào chảo\n• [R]: Nạp đầy bình Gas & Nhập kho nhanh',
         {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '12px',
@@ -972,7 +992,277 @@ export class ModalScene extends Phaser.Scene {
       )
       .setOrigin(0.5);
 
-    this.contentContainer.add([soundBtn, resumeBtn, menuBtn, resetBtn, guideCard, guideTxt]);
+    this.contentContainer.add([soundBtn, resumeBtn, menuBtn, tutorialBtn, resetBtn, guideCard, guideTxt]);
+  }
+
+  private renderTutorialTab(): void {
+    const W = this.modalW;
+    const totalSteps = 4;
+    const step = Phaser.Math.Clamp(this.pageIndex, 0, totalSteps - 1);
+
+    // 1. Step Indicator Pills Row
+    const stepLabels = ['1. Nhập Kho', '2. Chiên Món', '3. Phục Vụ', '4. Khách VIP'];
+    const pillGap = this.isDesktop ? 8 : 4;
+    const availPillW = W - 32;
+    const pillW = (availPillW - pillGap * (totalSteps - 1)) / totalSteps;
+    const pillY = 112;
+
+    stepLabels.forEach((label, idx) => {
+      const px = 16 + idx * (pillW + pillGap) + pillW / 2;
+      const isCurrent = idx === step;
+      const isPast = idx < step;
+      const pillBg = this.add.graphics();
+      pillBg.fillStyle(
+        isCurrent
+          ? TASTE_THEME.colors.accentPrimary
+          : isPast
+            ? TASTE_THEME.colors.accentAmber
+            : TASTE_THEME.colors.cardWarmAlt,
+        1
+      );
+      pillBg.fillRoundedRect(px - pillW / 2, pillY - 14, pillW, 28, 6);
+      pillBg.lineStyle(
+        1,
+        isCurrent ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.borderHairlineLight,
+        1
+      );
+      pillBg.strokeRoundedRect(px - pillW / 2, pillY - 14, pillW, 28, 6);
+
+      const pillTxt = this.add
+        .text(px, pillY, label, {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: this.isDesktop ? '11px' : '9.5px',
+          fontStyle: isCurrent ? '800' : '600',
+          color: isCurrent || isPast ? '#ffffff' : TASTE_THEME.colors.inkDark,
+        })
+        .setOrigin(0.5);
+
+      const hit = this.add
+        .rectangle(px, pillY, pillW, 28, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        SoundManager.playPop();
+        this.pageIndex = idx;
+        this.renderCurrentTab();
+      });
+
+      this.contentContainer.add([pillBg, pillTxt, hit]);
+    });
+
+    // 2. Main Tutorial Step Card
+    const cardY = 138;
+    const cardH = this.modalH - 208;
+    const cardBg = this.add.graphics();
+    cardBg.fillStyle(0xffffff, 1);
+    cardBg.fillRoundedRect(16, cardY, W - 32, cardH, 12);
+    cardBg.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
+    cardBg.strokeRoundedRect(16, cardY, W - 32, cardH, 12);
+    this.contentContainer.add(cardBg);
+
+    // Step-specific details
+    const stepConfigs = [
+      {
+        badge: 'BƯỚC 1: CHUẨN BỊ MỞ BÁN',
+        badgeColor: TASTE_THEME.colors.infoTeal,
+        title: '📦 Kiểm Tra Kho Nguyên Liệu & Bơm Bình Gas',
+        desc:
+          'Trước giờ mở bán xe cá viên mỗi sáng, hãy chuẩn bị 2 thứ sống còn:\n\n' +
+          '• ⛽ BÌNH GAS ĐẦU NGÀY: Đun sôi dầu trong chảo. Hết gas = không thể chiên cá!\n\n' +
+          '• 📦 KHO NGUYÊN LIỆU: Nhập sẵn các bịch cá viên, bò viên, tôm viên, đậu hũ...\n\n' +
+          '• 🌅 BẤM "MỞ BÁN NGAY": Khi xong chuẩn bị, nhấn nút to màu xanh hoặc phím [Space] để mở cửa xe đón khách vỉa hè!',
+        tip: '💡 Mẹo Ngày 1: Quán đã được cấp sẵn 350.000đ vốn và bình gas đầy để bạn khởi nghiệp!',
+      },
+      {
+        badge: 'BƯỚC 2: KỸ NGHỆ CHIÊN RÁN',
+        badgeColor: TASTE_THEME.colors.accentPrimary,
+        title: '🍳 Canh Thời Gian Chiên Vừa Chín Vàng Giòn Rụm',
+        desc:
+          'Chiên cá viên là nghệ thuật canh lửa chuẩn xác của đầu bếp:\n\n' +
+          '• 1. CHỌN MÓN: Chạm vào khay món ở tủ kính bên phải (hoặc phím tắt [1..6]).\n\n' +
+          '• 2. QUAN SÁT THANH TIẾN ĐỘ DẦU SÔI:\n' +
+          '   - 🟡 Đang sôi: Chưa chín, vớt sớm khách sẽ chê!\n' +
+          '   - 🟢 CHÍN VÀNG GIÒN: Vớt ngay lúc này để nhận thưởng +15 XP!\n' +
+          '   - 🔴 CHÁY KHÉT: Ngâm quá lâu trong dầu sẽ khét đen, phải đổ bỏ!',
+        tip: '💡 Mẹo: Bấm trực tiếp vào chảo dầu hoặc phím [Space] để vớt nhanh mẻ chín lên khay!',
+      },
+      {
+        badge: 'BƯỚC 3: PHỤC VỤ KHÁCH HÀNG',
+        badgeColor: TASTE_THEME.colors.success,
+        title: '🛎️ Giao Món Nóng Hổi & Nhận Tiền Tip Hậu Hĩnh',
+        desc:
+          'Khách hàng sẽ lần lượt ghé xe đứng chờ và gọi món:\n\n' +
+          '• 💬 BONG BÓNG YÊU CẦU: Hiển thị hình món ăn và số lượng xiên khách cần.\n\n' +
+          '• ✓ NÚT PHỤC VỤ XANH LÁ: Khi trên khay đã đủ món chín, nút sẽ sáng rực lên!\n\n' +
+          '• 💰 TÍNH TIỀN & TIP: Chạm vào khách hoặc bấm phím [Space] để giao hàng. Phục vụ càng nhanh khách càng vui, tip càng nhiều tiền và tăng sao đánh giá 5★!',
+        tip: '💡 Mẹo: Luôn chiên sẵn 2-3 phần cá viên trước trên khay để khách tới là có giao liền!',
+      },
+      {
+        badge: 'BƯỚC 4: KHÁCH ĐẶC BIỆT',
+        badgeColor: TASTE_THEME.colors.accentAmber,
+        title: '👑 Khách VIP Triệu View & ⚡ Khách Xấu Tính',
+        desc:
+          'Quán cá viên của bạn sẽ đón những vị khách vô cùng thú vị:\n\n' +
+          '• 👑 KHÁCH VIP (Food Reviewer / Đại Gia):\n' +
+          '   - Huy hiệu vàng óng, gọi combo lớn 3-5 món.\n' +
+          '   - Thưởng cực khủng: x2.5 TIỀN TIP, nhận +55 XP và đánh giá 5★!\n\n' +
+          '• ⚡ KHÁCH XẤU TÍNH (Đầu Gấu / Khách Bặm Trợn):\n' +
+          '   - Huy hiệu viền đỏ cảnh báo, cực kỳ thiếu kiên nhẫn (chỉ đợi 16 giây!).\n' +
+          '   - Nếu để họ giận bỏ đi, quán sẽ bị phạt tụt nặng xuống 1.0★! Hãy ưu tiên phục vụ sớm!',
+        tip: '💡 Nhắc nhở: Khi đã hiểu rõ cách vận hành, hãy bấm nút bắt đầu bên dưới để mở bán Ngày 1!',
+      },
+    ];
+
+    const cur = stepConfigs[step];
+
+    // Badge
+    const badgeW = 190;
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(cur.badgeColor, 1);
+    badgeBg.fillRoundedRect(28, cardY + 14, badgeW, 20, 6);
+    const badgeTxt = this.add
+      .text(28 + badgeW / 2, cardY + 24, cur.badge, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10px',
+        fontStyle: '800',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5);
+
+    // Title
+    const titleTxt = this.add
+      .text(28, cardY + 44, cur.title, {
+        fontFamily: TASTE_THEME.fonts.display,
+        fontSize: this.isDesktop ? '15.5px' : '13.5px',
+        fontStyle: 'bold',
+        color: TASTE_THEME.colors.inkDark,
+        wordWrap: { width: W - 56 },
+      })
+      .setOrigin(0, 0);
+
+    // Description body
+    const descTxt = this.add
+      .text(28, cardY + 72, cur.desc, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '12px' : '11px',
+        fontStyle: '500',
+        color: TASTE_THEME.colors.inkBody,
+        lineSpacing: 4,
+        wordWrap: { width: W - 56 },
+      })
+      .setOrigin(0, 0);
+
+    // Tip Callout Box at bottom of card
+    const tipBoxY = cardY + cardH - 64;
+    const tipBg = this.add.graphics();
+    tipBg.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
+    tipBg.fillRoundedRect(28, tipBoxY, W - 56, 48, 8);
+    tipBg.lineStyle(1, cur.badgeColor, 0.4);
+    tipBg.strokeRoundedRect(28, tipBoxY, W - 56, 48, 8);
+
+    const tipTxt = this.add
+      .text(W / 2, tipBoxY + 24, cur.tip, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: this.isDesktop ? '11px' : '10px',
+        fontStyle: '600',
+        color: TASTE_THEME.colors.inkDark,
+        align: 'center',
+        wordWrap: { width: W - 72 },
+      })
+      .setOrigin(0.5);
+
+    this.contentContainer.add([
+      badgeBg,
+      badgeTxt,
+      titleTxt,
+      descTxt,
+      tipBg,
+      tipTxt,
+    ]);
+
+    // 3. Bottom Controls Row
+    const botY = this.modalH - 34;
+    const btnW = this.isDesktop ? 120 : 100;
+
+    // Previous step button
+    if (step > 0) {
+      const prevBtn = this.createActionButton(
+        16 + btnW / 2,
+        botY,
+        btnW,
+        36,
+        '◀ Bước trước',
+        TASTE_THEME.colors.bgSurface,
+        () => {
+          this.pageIndex = step - 1;
+          this.renderCurrentTab();
+        }
+      );
+      this.contentContainer.add(prevBtn);
+    }
+
+    // Next step or Finish button
+    if (step < totalSteps - 1) {
+      const nextBtn = this.createActionButton(
+        W - 16 - btnW / 2,
+        botY,
+        btnW,
+        36,
+        'Bước sau ▶',
+        TASTE_THEME.colors.accentPrimary,
+        () => {
+          this.pageIndex = step + 1;
+          this.renderCurrentTab();
+        }
+      );
+      this.contentContainer.add(nextBtn);
+
+      // Skip button in middle
+      const skipTxt = this.add
+        .text(W / 2, botY, 'Vào bán ngay ➔', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '11.5px',
+          fontStyle: '700',
+          color: TASTE_THEME.colors.inkMutedOnDark,
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+
+      skipTxt.on('pointerdown', () => {
+        this.finishTutorialAndStartDay();
+      });
+      this.contentContainer.add(skipTxt);
+    } else {
+      // Final CTA on Step 4
+      const startBtnW = this.isDesktop ? 260 : 210;
+      const startBtn = this.createActionButton(
+        W / 2,
+        botY,
+        startBtnW,
+        38,
+        '🚀 BẮT ĐẦU MỞ BÁN NGÀY 1',
+        TASTE_THEME.colors.success,
+        () => {
+          this.finishTutorialAndStartDay();
+        }
+      );
+      this.contentContainer.add(startBtn);
+    }
+  }
+
+  private finishTutorialAndStartDay(): void {
+    this.gs.state.tutorialSeen = true;
+    this.gs.save();
+    SoundManager.playCash();
+    this.currentTab = 'inventory';
+    this.pageIndex = 0;
+    this.renderCurrentTab();
+    if (this.shopScene) {
+      this.shopScene.showToast(
+        '🎉 Bạn đã nắm rõ luật chơi! Hãy nhập hàng và bấm "MỞ BÁN NGAY" (phím Space)!',
+        TASTE_THEME.colors.success
+      );
+    }
+  }
   }
 
   private renderPaginationControls(totalPages: number, customY?: number): void {

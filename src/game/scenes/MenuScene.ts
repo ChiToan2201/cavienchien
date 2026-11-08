@@ -225,12 +225,13 @@ export class MenuScene extends Phaser.Scene {
     enterItems.push(metricCard);
 
     // 6. CTA Action Row (`ui-design` Component State Mapping + Keyboard Prompt)
+    const isDay1 = this.gs.state.day === 1;
     const primaryBtn = this.createActionButton(
       leftX + 152,
       462,
       304,
       54,
-      '▶  VÀO QUẦY & NHẬP HÀNG [Enter]',
+      isDay1 ? '▶  BẮT ĐẦU NGÀY 1 [Enter]' : `▶  TIẾP TỤC QUÁN • NGÀY ${this.gs.state.day} [Enter]`,
       'primary',
       () => {
         SoundManager.playCash();
@@ -508,12 +509,13 @@ export class MenuScene extends Phaser.Scene {
     enterItems.push(statsCon);
 
     // Primary & Secondary CTAs
+    const isDay1Mobile = this.gs.state.day === 1;
     const playBtn = this.createActionButton(
       W / 2,
       574,
       contentW,
       54,
-      '▶  VÀO QUẦY & NHẬP HÀNG',
+      isDay1Mobile ? '▶  BẮT ĐẦU NGÀY 1' : `▶  TIẾP TỤC NGÀY ${this.gs.state.day}`,
       'primary',
       () => {
         SoundManager.playCash();

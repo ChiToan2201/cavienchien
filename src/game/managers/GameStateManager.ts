@@ -89,6 +89,7 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
         level: 1,
         xp: 0,
         day: 1,
+        tutorialSeen: false,
         rating: 4.5,
         ratingCount: 12,
         gas: 100,

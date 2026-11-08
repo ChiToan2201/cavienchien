@@ -47,6 +47,8 @@ export class ShopScene extends Phaser.Scene {
   private primaryQuickBtnTxt!: Phaser.GameObjects.Text;
   private secondaryQuickBtnTxt!: Phaser.GameObjects.Text;
   private todayRevenueText!: Phaser.GameObjects.Text;
+  private tutorialHintContainer?: Phaser.GameObjects.Container;
+  private tutorialHintText?: Phaser.GameObjects.Text;
   private bubblePhase = 0;
   private isDesktop = false;
   private endDayPending = false;
@@ -82,7 +84,8 @@ export class ShopScene extends Phaser.Scene {
     this.hud = new HUD(
       this,
       () => this.openModal('settings'),
-      () => this.openModal('daily_result')
+      () => this.openModal('daily_result'),
+      () => this.openModal('tutorial')
     );
     this.add.existing(this.hud);
 
@@ -366,6 +369,88 @@ export class ShopScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
     }
+
+    // Build intelligent Day 1 Tutorial Guidance Banner across the street stall counter
+    this.buildDay1GuidanceBanner();
+  }
+
+  private buildDay1GuidanceBanner(): void {
+    const { width: W, isDesktop } = getLogicalDimensions();
+    const bannerX = isDesktop ? 432 : W / 2;
+    const bannerY = isDesktop ? 104 : 86;
+    const bannerW = isDesktop ? 490 : 380;
+    const bannerH = 24;
+
+    this.tutorialHintContainer = this.add.container(bannerX, bannerY);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x1a120b, 0.9);
+    bg.fillRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 6);
+    bg.lineStyle(1, TASTE_THEME.colors.accentAmber, 0.7);
+    bg.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 6);
+
+    this.tutorialHintText = this.add
+      .text(0, 0, '', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: isDesktop ? '11px' : '9.5px',
+        fontStyle: '700',
+        color: TASTE_THEME.colors.inkGold,
+        align: 'center',
+      })
+      .setOrigin(0.5);
+
+    const hit = this.add
+      .rectangle(0, 0, bannerW, bannerH, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => {
+      this.openModal('tutorial');
+    });
+
+    this.tutorialHintContainer.add([bg, this.tutorialHintText, hit]);
+    this.refreshDay1GuidanceHint();
+  }
+
+  public refreshDay1GuidanceHint(): void {
+    if (!this.tutorialHintContainer || !this.tutorialHintText) return;
+
+    if (this.gs.state.day > 1) {
+      this.tutorialHintContainer.setVisible(false);
+      return;
+    }
+
+    this.tutorialHintContainer.setVisible(true);
+
+    if (this.daySystem.phase === 'prep') {
+      this.tutorialHintText.setText('💡 Ngày 1: Nhập hàng, kiểm tra bình Gas rồi nhấn [MỞ BÁN NGAY] (Space)!');
+      return;
+    }
+
+    // In Selling Phase
+    const hasReadyFood = this.cookingSystem.slots.some((s) => s.status === 'ready');
+    if (hasReadyFood) {
+      this.tutorialHintText.setText('🔥 Cá viên đã chín vàng! Chạm chảo hoặc bấm [Space] để vớt ngay lên khay!');
+      return;
+    }
+
+    let canServeAny = false;
+    for (let i = 0; i < 4; i++) {
+      if (this.customerSystem.activeCustomers[i] && this.customerSystem.canFulfillCustomer(i).canServe) {
+        canServeAny = true;
+        break;
+      }
+    }
+    if (canServeAny) {
+      this.tutorialHintText.setText('🛎️ Đã đủ món chín! Chạm vào khách hoặc bấm [Space] để giao hàng nhận tiền!');
+      return;
+    }
+
+    const hasActiveCust = this.customerSystem.activeCustomers.some((c) => c !== null);
+    if (hasActiveCust) {
+      this.tutorialHintText.setText('🍳 Khách đang đợi! Chạm vào khay món ở tủ kính bên phải (phím 1..6) để chiên!');
+      return;
+    }
+
+    this.tutorialHintText.setText('💡 Mẹo Ngày 1: Bạn có thể chiên sẵn 2-3 phần cá viên trước để đón khách siêu tốc!');
   }
 
   private buildTwelveTraysGrid(): void {
@@ -702,12 +787,18 @@ export class ShopScene extends Phaser.Scene {
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
     this.refreshAllTraysAndCustomers();
+    this.refreshDay1GuidanceHint();
     for (let i = 0; i < 4; i++) {
       this.refreshFryerSlotUI(i);
     }
 
-    // Automatically open Pre-Day Inventory/Restock screen ("Trước ngày mở bán là lúc nhập hàng")
-    this.openModal('inventory');
+    // If first-time playing Day 1, guide player with step-by-step tutorial first
+    if (this.gs.state.day === 1 && !this.gs.state.tutorialSeen) {
+      this.openModal('tutorial');
+    } else {
+      // Automatically open Pre-Day Inventory/Restock screen ("Trước ngày mở bán là lúc nhập hàng")
+      this.openModal('inventory');
+    }
 
     if (assisted) {
       this.showToast(
@@ -749,6 +840,7 @@ export class ShopScene extends Phaser.Scene {
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
     this.refreshAllTraysAndCustomers();
+    this.refreshDay1GuidanceHint();
 
     SoundManager.playCash();
     this.player.playCheer(`Mở bán Ngày ${this.gs.state.day}!`);
@@ -1706,6 +1798,7 @@ export class ShopScene extends Phaser.Scene {
     this.refreshActionButtonsForPhase();
     this.refreshGasUI();
     this.refreshAllTraysAndCustomers();
+    this.refreshDay1GuidanceHint();
     for (let i = 0; i < 4; i++) {
       this.refreshFryerSlotUI(i);
     }
@@ -1761,6 +1854,7 @@ export class ShopScene extends Phaser.Scene {
     this.cookingSystem.update(delta);
     this.customerSystem.update(delta, this.daySystem.isRunning);
     this.checkDayEndConditions();
+    this.refreshDay1GuidanceHint();
 
     this.customerViews.forEach((view) => {
       view.updatePatienceBar();

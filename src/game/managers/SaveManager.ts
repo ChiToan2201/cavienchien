@@ -22,6 +22,7 @@ export interface SaveDataSchema {
   level: number;
   xp: number;
   day: number;
+  tutorialSeen?: boolean;
   rating: number;
   ratingCount: number;
   gas: number;

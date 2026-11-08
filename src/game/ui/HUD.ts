@@ -20,7 +20,8 @@ export class HUD extends Phaser.GameObjects.Container {
   constructor(
     scene: Phaser.Scene,
     onOpenSettings: () => void,
-    onOpenSummary: () => void
+    onOpenSummary: () => void,
+    onOpenTutorial?: () => void
   ) {
     super(scene, 0, 0);
     this.gs = GameStateManager.getInstance();
@@ -28,9 +29,9 @@ export class HUD extends Phaser.GameObjects.Container {
     this.isDesktop = isDesktop;
 
     if (this.isDesktop) {
-      this.buildDesktopHUD(W, onOpenSettings, onOpenSummary);
+      this.buildDesktopHUD(W, onOpenSettings, onOpenSummary, onOpenTutorial);
     } else {
-      this.buildMobileHUD(W, onOpenSettings, onOpenSummary);
+      this.buildMobileHUD(W, onOpenSettings, onOpenSummary, onOpenTutorial);
     }
     this.refresh();
 
@@ -43,7 +44,8 @@ export class HUD extends Phaser.GameObjects.Container {
   private buildDesktopHUD(
     W: number,
     onOpenSettings: () => void,
-    onOpenSummary: () => void
+    onOpenSummary: () => void,
+    onOpenTutorial?: () => void
   ): void {
     const navH = TASTE_THEME.layout.desktop.navHeight; // 64px
     const gut = TASTE_THEME.layout.desktop.gutter; // 20px
@@ -182,11 +184,18 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(hotkeyText);
 
     // Right Action Buttons aligned strictly to `W - gut` (`1280 - 20 = 1260`)
-    const settingsW = 96;
-    const summaryW = 104;
-    const btnGap = 10;
+    const settingsW = 90;
+    const summaryW = 96;
+    const tutorialW = 104;
+    const btnGap = 8;
     const settingsCenterX = W - gut - settingsW / 2;
     const summaryCenterX = settingsCenterX - settingsW / 2 - btnGap - summaryW / 2;
+    const tutorialCenterX = summaryCenterX - summaryW / 2 - btnGap - tutorialW / 2;
+
+    this.createTopButton(tutorialCenterX, 32, tutorialW, 38, '📖 Hướng dẫn', false, () => {
+      SoundManager.playPop();
+      if (onOpenTutorial) onOpenTutorial();
+    });
 
     this.createTopButton(summaryCenterX, 32, summaryW, 38, '📊 Báo cáo', false, () => {
       SoundManager.playPop();
@@ -202,7 +211,8 @@ export class HUD extends Phaser.GameObjects.Container {
   private buildMobileHUD(
     W: number,
     onOpenSettings: () => void,
-    onOpenSummary: () => void
+    onOpenSummary: () => void,
+    onOpenTutorial?: () => void
   ): void {
     const navH = TASTE_THEME.layout.mobile.navHeight; // 58px
     const gut = TASTE_THEME.layout.mobile.gutter; // 12px
@@ -291,12 +301,18 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(this.diamondText);
 
     // Right Action Buttons aligned strictly to `W - gut` (`420 - 12 = 408`)
-    const btnW = 64;
-    const gap = 6;
+    const btnW = 46;
+    const gap = 4;
     const settingsX = W - gut - btnW / 2;
     const summaryX = settingsX - btnW - gap;
+    const tutorialX = summaryX - btnW - gap;
 
-    this.createTopButton(summaryX, 29, btnW, 40, '📊\nKết quả', false, () => {
+    this.createTopButton(tutorialX, 29, btnW, 40, '📖\nHD', false, () => {
+      SoundManager.playPop();
+      if (onOpenTutorial) onOpenTutorial();
+    });
+
+    this.createTopButton(summaryX, 29, btnW, 40, '📊\nBáo cáo', false, () => {
       SoundManager.playPop();
       onOpenSummary();
     });
