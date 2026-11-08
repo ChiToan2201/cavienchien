@@ -47,4 +47,7 @@ canvas {
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.65),
     0 4px 16px rgba(0, 0, 0, 0.35);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: auto;
+  transform: translateZ(0);
 }

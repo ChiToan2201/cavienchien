@@ -6,6 +6,10 @@ import {
   getTargetDimensions,
   LayoutMode,
 } from './game/config/gameConfig';
+import { patchTextResolution, updateRenderScale } from './game/config/display';
+
+// Enable high-DPI text resolution before game initialization
+patchTextResolution();
 
 window.addEventListener('DOMContentLoaded', () => {
   let currentMode: LayoutMode = detectLayoutMode();
@@ -16,12 +20,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (resizeTimeout) window.clearTimeout(resizeTimeout);
     resizeTimeout = window.setTimeout(() => {
       const nextMode = detectLayoutMode();
-      if (nextMode !== currentMode) {
-        currentMode = nextMode;
-        const dims = getTargetDimensions(currentMode);
-        game.scale.setGameSize(dims.width, dims.height);
+      const prevScale = gameConfig.width;
+      updateRenderScale();
+      const nextDims = getTargetDimensions(nextMode);
 
-        // Restart active main scene so it rebuilds cleanly in the new orientation
+      if (nextMode !== currentMode || prevScale !== nextDims.width) {
+        currentMode = nextMode;
+        game.scale.setGameSize(nextDims.width, nextDims.height);
+
+        // Restart active main scene so it rebuilds cleanly in the new orientation / resolution
         const activeScenes = game.scene.getScenes(true);
         const hasModal = activeScenes.some((s) => s.scene.key === 'ModalScene');
         if (hasModal) {

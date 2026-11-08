@@ -3,6 +3,7 @@ import { GameStateManager } from '../managers/GameStateManager';
 import { SoundManager } from '../managers/SoundManager';
 import { AudioManager } from '../managers/AudioManager';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
 
 export class MenuScene extends Phaser.Scene {
   private gs!: GameStateManager;
@@ -12,13 +13,12 @@ export class MenuScene extends Phaser.Scene {
   }
 
   public create(): void {
+    applyHiDPICamera(this);
     this.gs = GameStateManager.getInstance();
     AudioManager.getInstance().setMusicDucked(false);
     SoundManager.playBgm('menu', 550);
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const isDesktop = W >= 900;
+    const { width: W, height: H, isDesktop } = getLogicalDimensions();
 
     // 1. Warm deep espresso night-market surface (`taste-skill` + `ui-design` token system)
     const bg = this.add.graphics();

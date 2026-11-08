@@ -4,29 +4,31 @@ import { PreloadScene } from '../scenes/PreloadScene';
 import { MenuScene } from '../scenes/MenuScene';
 import { ShopScene } from '../scenes/ShopScene';
 import { ModalScene } from '../scenes/ModalScene';
+import {
+  PORTRAIT_WIDTH,
+  PORTRAIT_HEIGHT,
+  LANDSCAPE_WIDTH,
+  LANDSCAPE_HEIGHT,
+  LayoutMode,
+  detectLayoutMode,
+  getLogicalDimensions,
+  getTargetDimensions,
+  getRenderScale,
+} from './display';
 
-export type LayoutMode = 'portrait' | 'landscape';
+export {
+  PORTRAIT_WIDTH,
+  PORTRAIT_HEIGHT,
+  LANDSCAPE_WIDTH,
+  LANDSCAPE_HEIGHT,
+  LayoutMode,
+  detectLayoutMode,
+  getLogicalDimensions,
+  getTargetDimensions,
+  getRenderScale,
+};
 
-export const PORTRAIT_WIDTH = 420;
-export const PORTRAIT_HEIGHT = 780;
-
-export const LANDSCAPE_WIDTH = 1280;
-export const LANDSCAPE_HEIGHT = 720;
-
-export function detectLayoutMode(): LayoutMode {
-  if (typeof window === 'undefined') return 'portrait';
-  return window.innerWidth >= 820 && window.innerWidth > window.innerHeight * 1.05
-    ? 'landscape'
-    : 'portrait';
-}
-
-export function getTargetDimensions(mode: LayoutMode = detectLayoutMode()): { width: number; height: number } {
-  return mode === 'landscape'
-    ? { width: LANDSCAPE_WIDTH, height: LANDSCAPE_HEIGHT }
-    : { width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT };
-}
-
-// Legacy exports for compatibility
+// Legacy exports for backwards compatibility
 export const GAME_WIDTH = PORTRAIT_WIDTH;
 export const GAME_HEIGHT = PORTRAIT_HEIGHT;
 
@@ -46,8 +48,11 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   },
   render: {
     antialias: true,
+    antialiasGL: true,
     pixelArt: false,
-    roundPixels: true,
+    roundPixels: false, // subpixel rendering gives smooth, high-fidelity lines and fonts
+    powerPreference: 'high-performance',
+    clearBeforeRender: true,
   },
   scene: [BootScene, PreloadScene, MenuScene, ShopScene, ModalScene],
 };

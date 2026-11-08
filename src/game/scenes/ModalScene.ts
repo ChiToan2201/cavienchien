@@ -5,6 +5,7 @@ import { GameStateManager } from '../managers/GameStateManager';
 import { SoundManager } from '../managers/SoundManager';
 import { ShopScene } from './ShopScene';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
 
 export type ModalTab =
   | 'shop'
@@ -45,10 +46,10 @@ export class ModalScene extends Phaser.Scene {
   }
 
   public create(): void {
+    applyHiDPICamera(this);
     this.gs = GameStateManager.getInstance();
-    const W = this.scale.width;
-    const H = this.scale.height;
-    this.isDesktop = W >= 900;
+    const { width: W, height: H, isDesktop } = getLogicalDimensions();
+    this.isDesktop = isDesktop;
 
     this.modalW = this.isDesktop ? 600 : W - 24;
     this.modalH = this.isDesktop ? 620 : 656;

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SpriteForgeProcessor } from '../utils/SpriteForgeProcessor';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -8,8 +9,8 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const { width, height } = this.scale;
-    const isDesktop = width >= 900;
+    applyHiDPICamera(this);
+    const { width, height, isDesktop } = getLogicalDimensions();
     const gut = isDesktop ? 48 : 20;
     const cx = width / 2;
     const cy = height / 2;
@@ -161,8 +162,10 @@ export class PreloadScene extends Phaser.Scene {
       statusText.setText('Đang chuẩn bị nguyên liệu tươi & căn chỉnh khay bán hàng...');
     });
 
-    // 1. Reference banner
+    // 1. Reference banner & Mascot
     this.load.image('ref_banner', 'assets/reference-banner.png');
+    this.load.image('mascot', 'assets/mascot.png');
+    this.load.image('mascot_transparent', 'assets/mascot-transparent.png');
 
     // 2. Characters (Chef 5-frame horizontal sheet + 6 Customer archetypes)
     this.load.image('chef_raw', 'assets/characters/chef-sheet.png');

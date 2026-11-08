@@ -13,6 +13,7 @@ import { CustomerOrder } from '../ui/CustomerOrder';
 import { Player } from '../entities/Player';
 import { ModalTab } from './ModalScene';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
 
 interface FryerSlotUI {
   container: Phaser.GameObjects.Container;
@@ -66,9 +67,9 @@ export class ShopScene extends Phaser.Scene {
     this.customerViews.clear();
     this.fryerUIs = [];
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    this.isDesktop = W >= 900;
+    applyHiDPICamera(this);
+    const { width: W, height: H, isDesktop } = getLogicalDimensions();
+    this.isDesktop = isDesktop;
 
     // 1. Environment Background (Desktop Widescreen or Mobile Portrait)
     if (this.isDesktop) {
@@ -401,7 +402,8 @@ export class ShopScene extends Phaser.Scene {
       const gapY = 6;
 
       const totalGridW = cols * trayW + (cols - 1) * gapX; // 380px
-      const startX = (this.scale.width - totalGridW) / 2 + trayW / 2;
+      const { width: screenW } = getLogicalDimensions();
+      const startX = (screenW - totalGridW) / 2 + trayW / 2;
       const startY = 280;
 
       INITIAL_FOODS.forEach((foodDef, index) => {
@@ -971,8 +973,7 @@ export class ShopScene extends Phaser.Scene {
    * - Right edge of last tab = `W - gut` (`1260px` desktop, `408px` mobile).
    */
   private buildBottomNavBar(): void {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const { width: W, height: H } = getLogicalDimensions();
     const navH = this.isDesktop
       ? TASTE_THEME.layout.desktop.bottomBarHeight
       : TASTE_THEME.layout.mobile.bottomBarHeight;
@@ -1631,7 +1632,8 @@ export class ShopScene extends Phaser.Scene {
   }
 
   public showToast(message: string, bgColor: number = TASTE_THEME.colors.bgSurface): void {
-    const toastX = this.isDesktop ? 362 : this.scale.width / 2;
+    const { width: screenW } = getLogicalDimensions();
+    const toastX = this.isDesktop ? 362 : screenW / 2;
     const toastY = this.isDesktop ? 286 : 228;
     const toastCon = this.add.container(toastX, toastY).setDepth(100);
     const txt = this.add

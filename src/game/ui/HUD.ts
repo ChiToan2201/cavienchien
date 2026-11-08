@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameStateManager } from '../managers/GameStateManager';
 import { SoundManager } from '../managers/SoundManager';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { getLogicalDimensions } from '../config/display';
 
 export class HUD extends Phaser.GameObjects.Container {
   private gs: GameStateManager;
@@ -23,12 +24,13 @@ export class HUD extends Phaser.GameObjects.Container {
   ) {
     super(scene, 0, 0);
     this.gs = GameStateManager.getInstance();
-    this.isDesktop = scene.scale.width >= 900;
+    const { width: W, isDesktop } = getLogicalDimensions();
+    this.isDesktop = isDesktop;
 
     if (this.isDesktop) {
-      this.buildDesktopHUD(scene.scale.width, onOpenSettings, onOpenSummary);
+      this.buildDesktopHUD(W, onOpenSettings, onOpenSummary);
     } else {
-      this.buildMobileHUD(scene.scale.width, onOpenSettings, onOpenSummary);
+      this.buildMobileHUD(W, onOpenSettings, onOpenSummary);
     }
     this.refresh();
 
