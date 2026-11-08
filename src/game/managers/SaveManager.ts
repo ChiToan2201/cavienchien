@@ -10,6 +10,10 @@ export interface DailyStats {
   revenue: number;
   ingredientCost: number;
   gasCost: number;
+  oilCost?: number;
+  veggieCost?: number;
+  wastedFoodCount?: number;
+  wastedFoodCost?: number;
   customersServed: number;
   customersMissed: number;
   tipsEarned: number;
@@ -27,6 +31,8 @@ export interface SaveDataSchema {
   ratingCount: number;
   gas: number;
   maxGas: number;
+  oilQuality: number; // 0 - 100 (% chất lượng dầu chiên)
+  veggieStock: number; // Số phần rau ăn kèm (dưa leo & đồ chua)
   soundEnabled: boolean;
   musicVolume?: number;
   sfxVolume?: number;
@@ -61,6 +67,8 @@ export class SaveManager {
       if (!raw) return null;
       const parsed = JSON.parse(raw) as SaveDataSchema;
       if (!parsed || typeof parsed.money !== 'number') return null;
+      if (typeof parsed.oilQuality !== 'number') parsed.oilQuality = 100;
+      if (typeof parsed.veggieStock !== 'number') parsed.veggieStock = 15;
       return parsed;
     } catch (err) {
       console.warn('Could not load from LocalStorage:', err);

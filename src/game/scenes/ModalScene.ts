@@ -419,6 +419,12 @@ export class ModalScene extends Phaser.Scene {
     const topBtnGap = 10;
     const topBtnW = (W - 32 - topBtnGap) / 2;
 
+    // Separate currently unlocked foods (active inventory for restocking) from locked foods
+    const unlockedFoods = INITIAL_FOODS.filter((f) => this.gs.state.foods[f.id]?.unlocked);
+    const lockedFoods = INITIAL_FOODS.filter((f) => !this.gs.state.foods[f.id]?.unlocked).sort(
+      (a, b) => a.unlockLevel - b.unlockLevel
+    );
+
     // 1. Phase Status Banner (`y: 98..126`, height = 28px)
     const bannerBg = this.add.graphics();
     bannerBg.fillStyle(isPrep ? 0xe6f4ea : 0xfee2e2, 1);
@@ -428,8 +434,8 @@ export class ModalScene extends Phaser.Scene {
 
     const bannerCopy = isPrep
       ? this.isDesktop
-        ? '🌅 Trước giờ mở bán: Hãy nhập nguyên liệu & bơm đầy Gas (Ca bán tối đa 6 phút)'
-        : '🌅 Trước giờ mở bán: Hãy nhập kho & bơm đầy Gas!'
+        ? `🌅 Trước giờ mở bán: Nhập kho ${unlockedFoods.length} món đang bán (${lockedFoods.length} món chưa mở ở trang sau) • Bơm đầy Gas!`
+        : `🌅 Nhập kho: ${unlockedFoods.length} món đang bán • ${lockedFoods.length} món chưa mở ở trang sau!`
       : this.isDesktop
         ? '🔒 ĐANG MỞ BÁN — Chỉ được nhập nguyên liệu & bơm Gas trước giờ mở bán!'
         : '🔒 ĐANG MỞ BÁN — Chỉ nhập hàng trước giờ mở bán!';
@@ -475,7 +481,7 @@ export class ModalScene extends Phaser.Scene {
       }
     );
 
-    const restockLabel = isPrep ? '📦 Nhập Đầy Tất Cả Món' : '🔒 Kho Đang Khóa';
+    const restockLabel = isPrep ? '📦 Nhập Hết Món Đang Bán' : '🔒 Kho Đang Khóa';
 
     const restockAllBtn = this.createActionButton(
       W - 16 - topBtnW / 2,
@@ -512,9 +518,21 @@ export class ModalScene extends Phaser.Scene {
 
     // 3. Paginated Food Stock Rows (`y = 178 + idx * 70`, height = 62px -> 4 rows end at `y = 450`)
     const perPage = 4;
-    const totalPages = Math.ceil(INITIAL_FOODS.length / perPage);
-    if (this.pageIndex >= totalPages) this.pageIndex = 0;
-    const items = INITIAL_FOODS.slice(this.pageIndex * perPage, (this.pageIndex + 1) * perPage);
+    const unlockedPages = Math.max(1, Math.ceil(unlockedFoods.length / perPage));
+    const lockedPages = Math.ceil(lockedFoods.length / perPage);
+    const totalPages = unlockedPages + lockedPages;
+
+    if (this.pageIndex >= totalPages) this.pageIndex = totalPages - 1;
+    if (this.pageIndex < 0) this.pageIndex = 0;
+
+    const isViewingUnlocked = this.pageIndex < unlockedPages;
+    const items = isViewingUnlocked
+      ? unlockedFoods.slice(this.pageIndex * perPage, (this.pageIndex + 1) * perPage)
+      : lockedFoods.slice(
+          (this.pageIndex - unlockedPages) * perPage,
+          (this.pageIndex - unlockedPages + 1) * perPage
+        );
+
     const maxStorage = this.gs.getMaxStorageCapacity();
     const maxTray = this.gs.getMaxTrayCapacity();
 
@@ -528,34 +546,62 @@ export class ModalScene extends Phaser.Scene {
       const y = 178 + idx * 70;
       const rowH = 62;
       const st = this.gs.state.foods[food.id];
+      const isUnlocked = st?.unlocked ?? false;
 
       const row = this.add.graphics();
-      row.fillStyle(0xffffff, 1);
+      row.fillStyle(isUnlocked ? 0xffffff : TASTE_THEME.colors.cardWarmAlt, 1);
       row.fillRoundedRect(16, y, W - 32, rowH, 10);
-      row.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
+      row.lineStyle(
+        1,
+        isUnlocked ? TASTE_THEME.colors.borderHairlineLight : TASTE_THEME.colors.borderHairlineDark,
+        isUnlocked ? 1 : 0.6
+      );
       row.strokeRoundedRect(16, y, W - 32, rowH, 10);
 
       const icon = this.add.image(46, y + rowH / 2, food.textureKey).setScale(0.185);
+      if (!isUnlocked) {
+        icon.setAlpha(0.45);
+      }
 
-      const title = this.add.text(textStartX, y + 10, food.name, {
+      const titlePrefix = isUnlocked ? '' : '🔒 ';
+      const title = this.add.text(textStartX, y + 10, `${titlePrefix}${food.name}`, {
         fontFamily: TASTE_THEME.fonts.sans,
         fontSize: this.isDesktop ? '13.5px' : '12px',
         fontStyle: '800',
-        color: TASTE_THEME.colors.inkDark,
+        color: isUnlocked ? TASTE_THEME.colors.inkDark : TASTE_THEME.colors.inkMuted,
       });
       if (title.width > maxRowTextW) {
         title.setScale(maxRowTextW / title.width);
       }
 
-      const stockStr = this.isDesktop
-        ? `Trữ đông: ${st.rawStock}/${maxStorage}   •   Trên khay: ${st.cookedStock}/${maxTray}`
-        : `Kho: ${st.rawStock}/${maxStorage}  •  Khay: ${st.cookedStock}/${maxTray}`;
+      let stockStr: string;
+      let stockColor: string;
+
+      if (isUnlocked) {
+        stockStr = this.isDesktop
+          ? `Trữ đông: ${st.rawStock}/${maxStorage}   •   Trên khay: ${st.cookedStock}/${maxTray}`
+          : `Kho: ${st.rawStock}/${maxStorage}  •  Khay: ${st.cookedStock}/${maxTray}`;
+        stockColor = st.rawStock < food.batchYield ? '#c92a2a' : '#1f8a4c';
+      } else {
+        const canUnlockNow =
+          this.gs.state.level >= food.unlockLevel && this.gs.state.money >= food.unlockCost;
+        if (canUnlockNow) {
+          stockStr = `✨ Đủ điều kiện mở! Phí mở: ${this.gs.formatCurrency(food.unlockCost)} (+35 XP)`;
+          stockColor = '#1f8a4c';
+        } else if (this.gs.state.level >= food.unlockLevel) {
+          stockStr = `Cần ${this.gs.formatCurrency(food.unlockCost)} để mở bán món này`;
+          stockColor = '#d97706';
+        } else {
+          stockStr = `Mở khóa tại Cấp ${food.unlockLevel} • Phí mở: ${this.gs.formatCurrency(food.unlockCost)}`;
+          stockColor = '#7c6552';
+        }
+      }
 
       const stockInfo = this.add.text(textStartX, y + 34, stockStr, {
         fontFamily: TASTE_THEME.fonts.sans,
         fontSize: this.isDesktop ? '11.5px' : '10.5px',
         fontStyle: '700',
-        color: st.rawStock < food.batchYield ? '#c92a2a' : '#1f8a4c',
+        color: stockColor,
       });
       if (stockInfo.width > maxRowTextW) {
         stockInfo.setScale(maxRowTextW / stockInfo.width);
@@ -563,44 +609,221 @@ export class ModalScene extends Phaser.Scene {
 
       this.contentContainer.add([row, icon, title, stockInfo]);
 
-      const canBuy = isPrep && st.unlocked && st.rawStock < maxStorage;
-      const btnLabel = !st.unlocked
-        ? 'Chưa mở'
-        : !isPrep
+      if (isUnlocked) {
+        const canBuy = isPrep && st.rawStock < maxStorage;
+        const btnLabel = !isPrep
           ? '🔒 Đang bán'
           : st.rawStock >= maxStorage
             ? 'Kho Đầy'
             : `+${food.restockBatchSize} Phần\n${(food.buyCost / 1000).toFixed(0)}K`;
 
-      const btn = this.createActionButton(
+        const btn = this.createActionButton(
+          rowBtnCenterX,
+          y + rowH / 2,
+          rowBtnW,
+          42,
+          btnLabel,
+          canBuy ? TASTE_THEME.colors.infoTeal : TASTE_THEME.colors.slateNeutral,
+          () => {
+            if (!isPrep) {
+              this.shopScene.showToast(
+                '🔒 Đang mở bán! Chỉ được nhập hàng trước giờ mở bán!',
+                TASTE_THEME.colors.accentAmber
+              );
+              return;
+            }
+            const res = this.gs.restockIngredient(food.id);
+            if (!res.ok && res.reason) {
+              this.shopScene.showToast(res.reason, TASTE_THEME.colors.danger);
+            } else {
+              this.renderCurrentTab();
+            }
+          }
+        );
+        this.contentContainer.add(btn);
+      } else {
+        const canUnlock =
+          this.gs.state.level >= food.unlockLevel && this.gs.state.money >= food.unlockCost;
+        let btnText: string;
+        let btnColor: number;
+
+        if (canUnlock) {
+          btnText = `Mở Món\n${(food.unlockCost / 1000).toFixed(0)}K`;
+          btnColor = TASTE_THEME.colors.accentPrimary;
+        } else if (this.gs.state.level < food.unlockLevel) {
+          btnText = `Cần Cấp ${food.unlockLevel}`;
+          btnColor = TASTE_THEME.colors.slateNeutral;
+        } else {
+          btnText = `Thiếu Tiền\n${(food.unlockCost / 1000).toFixed(0)}K`;
+          btnColor = TASTE_THEME.colors.slateNeutral;
+        }
+
+        const btn = this.createActionButton(
+          rowBtnCenterX,
+          y + rowH / 2,
+          rowBtnW,
+          42,
+          btnText,
+          btnColor,
+          () => {
+            if (!canUnlock) {
+              if (this.gs.state.level < food.unlockLevel) {
+                this.shopScene.showToast(
+                  `🔒 Cần đạt Cấp ${food.unlockLevel} để mở món này!`,
+                  TASTE_THEME.colors.accentAmber
+                );
+              } else {
+                this.shopScene.showToast(
+                  `Cần ${this.gs.formatCurrency(food.unlockCost)} để mở món này!`,
+                  TASTE_THEME.colors.danger
+                );
+              }
+              return;
+            }
+
+            const res = this.gs.unlockFood(food.id);
+            if (res.ok) {
+              SoundManager.playCash();
+              this.shopScene.showToast(
+                `🎉 Đã mở khóa ${food.name}! Món đã được chuyển sang danh sách Đang Bán.`,
+                TASTE_THEME.colors.success
+              );
+              this.renderCurrentTab();
+            } else if (res.reason) {
+              this.shopScene.showToast(res.reason, TASTE_THEME.colors.danger);
+            }
+          }
+        );
+        this.contentContainer.add(btn);
+      }
+    });
+
+    // Helpful Callout Card when unlocked page has less than 4 items
+    if (isViewingUnlocked && items.length < perPage && lockedFoods.length > 0) {
+      const emptyIdx = items.length;
+      const y = 178 + emptyIdx * 70;
+      const rowH = 62;
+
+      const calloutBg = this.add.graphics();
+      calloutBg.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
+      calloutBg.fillRoundedRect(16, y, W - 32, rowH, 10);
+      calloutBg.lineStyle(1, TASTE_THEME.colors.borderAccent, 0.7);
+      calloutBg.strokeRoundedRect(16, y, W - 32, rowH, 10);
+
+      const lockIcon = this.add.text(46, y + rowH / 2, '🔒', { fontSize: '20px' }).setOrigin(0.5);
+
+      const calloutTitle = this.add.text(
+        textStartX,
+        y + 12,
+        `Còn ${lockedFoods.length} món chưa mở khóa ở các trang sau`,
+        {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: this.isDesktop ? '13px' : '11.5px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkDark,
+        }
+      );
+      if (calloutTitle.width > maxRowTextW) {
+        calloutTitle.setScale(maxRowTextW / calloutTitle.width);
+      }
+
+      const calloutSub = this.add.text(
+        textStartX,
+        y + 34,
+        'Lên cấp & mở món mới để bán được nhiều tiền hơn',
+        {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: this.isDesktop ? '11px' : '10px',
+          fontStyle: '500',
+          color: TASTE_THEME.colors.inkMuted,
+        }
+      );
+      if (calloutSub.width > maxRowTextW) {
+        calloutSub.setScale(maxRowTextW / calloutSub.width);
+      }
+
+      const viewLockedBtn = this.createActionButton(
         rowBtnCenterX,
         y + rowH / 2,
         rowBtnW,
         42,
-        btnLabel,
-        canBuy ? TASTE_THEME.colors.infoTeal : TASTE_THEME.colors.slateNeutral,
+        'Xem Món\nChưa Mở ▶',
+        TASTE_THEME.colors.infoTeal,
         () => {
-          if (!isPrep) {
-            this.shopScene.showToast(
-              '🔒 Đang mở bán! Chỉ được nhập hàng trước giờ mở bán!',
-              TASTE_THEME.colors.accentAmber
-            );
-            return;
-          }
-          const res = this.gs.restockIngredient(food.id);
-          if (!res.ok && res.reason) {
-            this.shopScene.showToast(res.reason, TASTE_THEME.colors.danger);
-          } else {
-            this.renderCurrentTab();
-          }
+          this.pageIndex = unlockedPages;
+          this.renderCurrentTab();
         }
       );
-      this.contentContainer.add(btn);
-    });
 
-    // 4. Pagination Controls (`py = 482` when `isPrep` -> spans `465..499`)
+      this.contentContainer.add([calloutBg, lockIcon, calloutTitle, calloutSub, viewLockedBtn]);
+    }
+
+    // Return to Page 1 Callout Card when on the last page of locked items
+    if (!isViewingUnlocked && items.length < perPage) {
+      const emptyIdx = items.length;
+      const y = 178 + emptyIdx * 70;
+      const rowH = 62;
+
+      const calloutBg = this.add.graphics();
+      calloutBg.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
+      calloutBg.fillRoundedRect(16, y, W - 32, rowH, 10);
+      calloutBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 0.6);
+      calloutBg.strokeRoundedRect(16, y, W - 32, rowH, 10);
+
+      const bulbIcon = this.add.text(46, y + rowH / 2, '💡', { fontSize: '20px' }).setOrigin(0.5);
+
+      const calloutTitle = this.add.text(
+        textStartX,
+        y + 12,
+        'Đã hiển thị hết danh sách món chưa mở khóa',
+        {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: this.isDesktop ? '13px' : '11.5px',
+          fontStyle: '800',
+          color: TASTE_THEME.colors.inkDark,
+        }
+      );
+      if (calloutTitle.width > maxRowTextW) {
+        calloutTitle.setScale(maxRowTextW / calloutTitle.width);
+      }
+
+      const calloutSub = this.add.text(
+        textStartX,
+        y + 34,
+        'Bấm nút bên phải để quay lại danh sách món đang bán',
+        {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: this.isDesktop ? '11px' : '10px',
+          fontStyle: '500',
+          color: TASTE_THEME.colors.inkMuted,
+        }
+      );
+      if (calloutSub.width > maxRowTextW) {
+        calloutSub.setScale(maxRowTextW / calloutSub.width);
+      }
+
+      const backBtn = this.createActionButton(
+        rowBtnCenterX,
+        y + rowH / 2,
+        rowBtnW,
+        42,
+        '◀ Về Món\nĐang Bán',
+        TASTE_THEME.colors.bgSurface,
+        () => {
+          this.pageIndex = 0;
+          this.renderCurrentTab();
+        }
+      );
+
+      this.contentContainer.add([calloutBg, bulbIcon, calloutTitle, calloutSub, backBtn]);
+    }
+
+    // 4. Pagination Controls
     const paginationY = isPrep ? 484 : this.modalH - 36;
-    this.renderPaginationControls(totalPages, paginationY);
+    const pageLabel = isViewingUnlocked
+      ? `Trang ${this.pageIndex + 1} / ${totalPages} • Đang Bán (${unlockedFoods.length} món)`
+      : `Trang ${this.pageIndex + 1} / ${totalPages} • Chưa Mở (${lockedFoods.length} món)`;
+    this.renderPaginationControls(totalPages, paginationY, pageLabel);
 
     // 5. Primary CTA to Start Selling Day (`y = 548`, height = 46 -> spans `525..571`)
     if (isPrep) {
@@ -1263,9 +1486,12 @@ export class ModalScene extends Phaser.Scene {
       );
     }
   }
-  }
 
-  private renderPaginationControls(totalPages: number, customY?: number): void {
+  private renderPaginationControls(
+    totalPages: number,
+    customY?: number,
+    customLabel?: string
+  ): void {
     if (totalPages <= 1) return;
     const W = this.modalW;
     const py = customY ?? this.modalH - 36;
@@ -1287,13 +1513,18 @@ export class ModalScene extends Phaser.Scene {
     );
 
     const pageLbl = this.add
-      .text(W / 2, py, `Trang ${this.pageIndex + 1} / ${totalPages}`, {
+      .text(W / 2, py, customLabel ?? `Trang ${this.pageIndex + 1} / ${totalPages}`, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '12.5px',
+        fontSize: this.isDesktop ? '12px' : '11px',
         fontStyle: '700',
         color: TASTE_THEME.colors.inkDark,
       })
       .setOrigin(0.5);
+
+    const maxLblW = W - 32 - btnW * 2 - 12;
+    if (pageLbl.width > maxLblW) {
+      pageLbl.setScale(maxLblW / pageLbl.width);
+    }
 
     const nextBtn = this.createActionButton(
       W - 16 - btnW / 2,

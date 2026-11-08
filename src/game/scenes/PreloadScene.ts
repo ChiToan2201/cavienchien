@@ -251,9 +251,9 @@ export class PreloadScene extends Phaser.Scene {
       stripBorderComponents: true,
     });
 
-    // 4. Process all real food plates with uniform `center` registration (256x256)
+    // 4. Process real food plates with uniform `center` registration (256x256)
+    // Note: 'food_ca_vien_truyen_thong' is now generated via CodeArt2D with ceramic plate, sauces & garnish
     const realFoodKeys = [
-      'food_ca_vien_truyen_thong',
       'food_ca_vien_trung_ca',
       'food_ca_vien_rong_bien',
       'food_tom_vien',

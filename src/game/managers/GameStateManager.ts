@@ -94,6 +94,8 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
         ratingCount: 12,
         gas: 100,
         maxGas: 100,
+        oilQuality: 100,
+        veggieStock: 15,
         soundEnabled: !audio.muted,
         musicVolume: audio.musicVolume,
         sfxVolume: audio.sfxVolume,
@@ -121,6 +123,10 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
       revenue: 0,
       ingredientCost: 0,
       gasCost: 0,
+      oilCost: 0,
+      veggieCost: 0,
+      wastedFoodCount: 0,
+      wastedFoodCost: 0,
       customersServed: 0,
       customersMissed: 0,
       tipsEarned: 0,
@@ -269,6 +275,81 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
     this.state.ratingCount += 1;
     this.state.rating = Math.min(5.0, Math.max(1.0, Number((totalScore / this.state.ratingCount).toFixed(1))));
     this.emit('state-changed');
+  }
+
+  public getOilStatus(): 'fresh' | 'degraded' | 'burned' {
+    const q = this.state.oilQuality;
+    if (q >= 60) return 'fresh';
+    if (q >= 25) return 'degraded';
+    return 'burned';
+  }
+
+  public getOilCookingMultiplier(): number {
+    const status = this.getOilStatus();
+    if (status === 'fresh') return 1.0;
+    if (status === 'degraded') return 1.15;
+    return 1.35;
+  }
+
+  public changeCookingOil(): { ok: boolean; reason?: string } {
+    if (this.state.oilQuality >= 98) {
+      return { ok: false, reason: 'Chảo dầu còn rất mới, chưa cần thay!' };
+    }
+    const cost = 30000;
+    if (!this.spendMoney(cost)) {
+      return { ok: false, reason: `Không đủ ${this.formatCurrency(cost)} để thay dầu mới!` };
+    }
+    this.state.oilQuality = 100;
+    this.dailyStats.oilCost = (this.dailyStats.oilCost || 0) + cost;
+    SoundManager.playPop();
+    this.emit('state-changed');
+    return { ok: true };
+  }
+
+  public restockVeggies(): { ok: boolean; reason?: string } {
+    const maxVeggies = 40;
+    if (this.state.veggieStock >= maxVeggies) {
+      return { ok: false, reason: 'Khay rau ăn kèm đã đầy ắp!' };
+    }
+    const cost = 15000;
+    if (!this.spendMoney(cost)) {
+      return { ok: false, reason: `Không đủ ${this.formatCurrency(cost)} để nhập rau ăn kèm!` };
+    }
+    this.state.veggieStock = Math.min(maxVeggies, this.state.veggieStock + 15);
+    this.dailyStats.veggieCost = (this.dailyStats.veggieCost || 0) + cost;
+    SoundManager.playPop();
+    this.emit('state-changed');
+    return { ok: true };
+  }
+
+  public consumeVeggie(): boolean {
+    if (this.state.veggieStock <= 0) return false;
+    this.state.veggieStock -= 1;
+    this.emit('state-changed');
+    return true;
+  }
+
+  public clearDayOldCookedStock(): { count: number; cost: number } {
+    let wastedCount = 0;
+    let wastedCost = 0;
+
+    for (const f of this.getUnlockedFoods()) {
+      const stock = this.state.foods[f.id];
+      if (stock && stock.cookedStock > 0) {
+        wastedCount += stock.cookedStock;
+        // Chi phí nguyên liệu ước tính của mỗi phần
+        const unitCost = Math.round(f.buyCost / f.restockBatchSize);
+        wastedCost += stock.cookedStock * unitCost;
+        stock.cookedStock = 0;
+        this.emit('tray-updated', f.id);
+      }
+    }
+
+    this.dailyStats.wastedFoodCount = wastedCount;
+    this.dailyStats.wastedFoodCost = wastedCost;
+    this.emit('state-changed');
+    this.save();
+    return { count: wastedCount, cost: wastedCost };
   }
 
   public refillGas(): { ok: boolean; reason?: string } {

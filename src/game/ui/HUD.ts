@@ -60,14 +60,20 @@ export class HUD extends Phaser.GameObjects.Container {
     // Left Edge: Chef Avatar + Level Badge + XP bar aligned to `gut` (x = 20)
     const avatarX = gut + 22;
     const avatarY = navH / 2 - 2;
+    const avRadius = 21;
+
     const avCircle = this.scene.add.graphics();
     avCircle.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-    avCircle.fillCircle(avatarX, avatarY, 21);
+    avCircle.fillCircle(avatarX, avatarY, avRadius);
     avCircle.lineStyle(1.5, TASTE_THEME.colors.accentAmber, 0.9);
-    avCircle.strokeCircle(avatarX, avatarY, 21);
+    avCircle.strokeCircle(avatarX, avatarY, avRadius);
     this.add(avCircle);
 
-    if (this.scene.textures.exists('chef_raw')) {
+    if (this.scene.textures.exists('chef_avatar')) {
+      const avatarImg = this.scene.add.image(avatarX, avatarY, 'chef_avatar');
+      avatarImg.setDisplaySize(avRadius * 2, avRadius * 2);
+      this.add(avatarImg);
+    } else if (this.scene.textures.exists('chef_raw')) {
       const avatarImg = this.scene.add.image(avatarX, avatarY + 2, 'chef_raw', 0).setScale(0.16);
       this.add(avatarImg);
     }
@@ -226,14 +232,20 @@ export class HUD extends Phaser.GameObjects.Container {
 
     const avatarX = gut + 18;
     const avatarY = 24;
+    const avRadius = 17;
+
     const avCircle = this.scene.add.graphics();
     avCircle.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-    avCircle.fillCircle(avatarX, avatarY, 17);
+    avCircle.fillCircle(avatarX, avatarY, avRadius);
     avCircle.lineStyle(1.5, TASTE_THEME.colors.accentAmber, 0.9);
-    avCircle.strokeCircle(avatarX, avatarY, 17);
+    avCircle.strokeCircle(avatarX, avatarY, avRadius);
     this.add(avCircle);
 
-    if (this.scene.textures.exists('chef_raw')) {
+    if (this.scene.textures.exists('chef_avatar')) {
+      const avatarImg = this.scene.add.image(avatarX, avatarY, 'chef_avatar');
+      avatarImg.setDisplaySize(avRadius * 2, avRadius * 2);
+      this.add(avatarImg);
+    } else if (this.scene.textures.exists('chef_raw')) {
       const avatarImg = this.scene.add.image(avatarX, avatarY + 2, 'chef_raw', 0).setScale(0.13);
       this.add(avatarImg);
     }

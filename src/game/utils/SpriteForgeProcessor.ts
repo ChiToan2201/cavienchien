@@ -585,27 +585,43 @@ export class SpriteForgeProcessor {
     const src = tex.getSourceImage() as HTMLImageElement | HTMLCanvasElement;
     if (!src || !src.width || !src.height) return;
 
-    const srcFrameW = Math.floor(src.width / frameCount);
     const srcFrameH = src.height;
+
+    // In chef-sheet.png (width 251px), the 5 character frames are non-uniform:
+    // Chars are at: Frame 0 (12..53), Frame 1 (63..103), Frame 2 (110..149), Frame 3 (160..200), Frame 4 (205..246).
+    // Slicing rigidly at src.width / 5 (50px) slices off the right edge of Character 0's face, ear and hat!
+    // Using exact non-overlapping interval cuts between the empty column gaps preserves all 5 characters completely:
+    const frameCuts: Array<{ startX: number; endX: number }> =
+      key === 'chef_raw' && src.width === 251
+        ? [
+            { startX: 0, endX: 58 },
+            { startX: 58, endX: 107 },
+            { startX: 107, endX: 155 },
+            { startX: 155, endX: 203 },
+            { startX: 203, endX: 251 },
+          ]
+        : Array.from({ length: frameCount }, (_, i) => ({
+            startX: Math.floor((src.width / frameCount) * i),
+            endX: Math.floor((src.width / frameCount) * (i + 1)),
+          }));
 
     const frameCanvases: HTMLCanvasElement[] = [];
     const bboxes: BBox[] = [];
     let maxSubjectH = 1;
 
     for (let i = 0; i < frameCount; i++) {
+      const cut = frameCuts[i];
+      const cutW = cut.endX - cut.startX;
       const fCanvas = document.createElement('canvas');
-      fCanvas.width = srcFrameW;
+      fCanvas.width = cutW;
       fCanvas.height = srcFrameH;
       const fCtx = fCanvas.getContext('2d', { willReadFrequently: true })!;
-      fCtx.drawImage(src, i * srcFrameW, 0, srcFrameW, srcFrameH, 0, 0, srcFrameW, srcFrameH);
+      fCtx.drawImage(src, cut.startX, 0, cutW, srcFrameH, 0, 0, cutW, srcFrameH);
 
-      // Erase any top border crop line (first 6px in chef-sheet.png has a dark brown line)
-      fCtx.clearRect(0, 0, srcFrameW, 6);
-
-      const bbox = this.cleanFramePixels(fCtx, srcFrameW, srcFrameH, {
+      const bbox = this.cleanFramePixels(fCtx, cutW, srcFrameH, {
         t0: 15,
         t1: 56,
-        stripBorderComponents: true,
+        stripBorderComponents: false, // Preserves complete character outlines
       });
 
       frameCanvases.push(fCanvas);
@@ -654,6 +670,56 @@ export class SpriteForgeProcessor {
       frameWidth: outFrameWidth,
       frameHeight: outFrameHeight,
     });
+
+    // Generate dedicated high-resolution circular portrait avatar for HUD focused on the chef's face & hat
+    if (key === 'chef_raw' && frameCanvases.length > 0) {
+      const avatarSize = 128;
+      const avatarCanvas = document.createElement('canvas');
+      avatarCanvas.width = avatarSize;
+      avatarCanvas.height = avatarSize;
+      const avCtx = avatarCanvas.getContext('2d')!;
+      avCtx.imageSmoothingEnabled = true;
+      avCtx.imageSmoothingQuality = 'high';
+
+      // Clip circle with 2px inner margin
+      avCtx.save();
+      avCtx.beginPath();
+      avCtx.arc(avatarSize / 2, avatarSize / 2, avatarSize / 2 - 2, 0, Math.PI * 2);
+      avCtx.clip();
+
+      // Warm surface background inside circle
+      avCtx.fillStyle = '#211913';
+      avCtx.fillRect(0, 0, avatarSize, avatarSize);
+
+      // Character 0 face is centered at x=33, y=30 with size ~38px in fCanvas[0]
+      const f0 = frameCanvases[0];
+      const b0 = bboxes[0];
+      const headX = Math.max(0, b0.minX);
+      const headY = Math.max(0, b0.minY);
+      const headW = Math.min(f0.width - headX, b0.width);
+      const headH = Math.min(f0.height - headY, Math.round(b0.height * 0.58));
+
+      const destPadding = 10;
+      const destDrawSize = avatarSize - destPadding * 2;
+      const avScale = destDrawSize / Math.max(headW, headH);
+      const avDrawW = headW * avScale;
+      const avDrawH = headH * avScale;
+      const avDestX = (avatarSize - avDrawW) / 2;
+      const avDestY = (avatarSize - avDrawH) / 2 + 3;
+
+      avCtx.drawImage(f0, headX, headY, headW, headH, avDestX, avDestY, avDrawW, avDrawH);
+      avCtx.restore();
+
+      // Crisp gold border ring
+      avCtx.strokeStyle = '#f59e0b';
+      avCtx.lineWidth = 4;
+      avCtx.beginPath();
+      avCtx.arc(avatarSize / 2, avatarSize / 2, avatarSize / 2 - 2, 0, Math.PI * 2);
+      avCtx.stroke();
+
+      scene.textures.remove('chef_avatar');
+      scene.textures.addCanvas('chef_avatar', avatarCanvas);
+    }
   }
 
   /**
@@ -781,6 +847,75 @@ export class SpriteForgeProcessor {
       ctx.arc(cx - r * 0.12, cy - r * 0.48, r * 0.07, 0, Math.PI * 2);
       ctx.fill();
     };
+
+    // 0. Cá Viên Truyền Thống (`food_ca_vien_truyen_thong`) — Signature golden fried fish balls with savory dark soy & chili drizzle
+    if (!scene.textures.exists('food_ca_vien_truyen_thong')) {
+      const { canvas, ctx } = createPlateCanvas('warm_ceramic');
+      const coords = [
+        { x: 96, y: 128, r: 28 },
+        { x: 156, y: 130, r: 28 },
+        { x: 78, y: 158, r: 29 },
+        { x: 174, y: 156, r: 28 },
+        { x: 126, y: 112, r: 30 },
+        { x: 126, y: 156, r: 32 },
+      ];
+      for (const c of coords) {
+        // Golden fried fish ball: warm golden crust (#e79442), deep amber shadow (#a85a1a), crispy yellow highlight (#ffc570)
+        drawCelSphere(ctx, c.x, c.y, c.r, '#e79442', '#a85a1a', '#ffc570');
+        // Blistered golden frying bubbles on fish balls
+        ctx.fillStyle = '#ffcf7d';
+        ctx.beginPath();
+        ctx.arc(c.x + 8, c.y - 10, 3, 0, Math.PI * 2);
+        ctx.arc(c.x - 10, c.y + 8, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Sriracha sweet chili sauce drizzle across front fish balls
+      ctx.strokeStyle = '#d9381e';
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(90, 142);
+      ctx.quadraticCurveTo(110, 168, 128, 152);
+      ctx.quadraticCurveTo(145, 138, 162, 160);
+      ctx.stroke();
+
+      // Deep dark soy sauce accent (#261208)
+      ctx.strokeStyle = '#261208';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(102, 148);
+      ctx.quadraticCurveTo(124, 172, 148, 154);
+      ctx.stroke();
+
+      // Golden toasted garlic & scallion sprinkles
+      const sprinkles = [
+        { x: 118, y: 148, color: '#4ade80' },
+        { x: 134, y: 145, color: '#22c55e' },
+        { x: 126, y: 168, color: '#fef08a' },
+        { x: 110, y: 160, color: '#fef08a' },
+        { x: 142, y: 162, color: '#4ade80' },
+        { x: 124, y: 132, color: '#fef08a' },
+      ];
+      for (const s of sprinkles) {
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 2 Bamboo skewers sticking out to the right for authentic street food style
+      ctx.strokeStyle = '#cda168';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(150, 125);
+      ctx.lineTo(210, 100);
+      ctx.moveTo(165, 148);
+      ctx.lineTo(218, 132);
+      ctx.stroke();
+
+      scene.textures.addCanvas('food_ca_vien_truyen_thong', canvas);
+    }
 
     // 1. Cá Viên Phô Mai (`food_ca_vien_pho_mai`) — Crispy golden balls with molten cheese ooze
     if (!scene.textures.exists('food_ca_vien_pho_mai')) {
