@@ -3,6 +3,7 @@ import { INITIAL_FOODS } from '../data/foods';
 import { UPGRADE_DEFINITIONS, INITIAL_MISSIONS, ACHIEVEMENTS } from '../data/upgrades';
 import { GameStateManager } from '../managers/GameStateManager';
 import { SoundManager } from '../managers/SoundManager';
+import { AudioManager } from '../managers/AudioManager';
 import { ShopScene } from './ShopScene';
 import { TASTE_THEME } from '../config/tasteTheme';
 import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
@@ -29,6 +30,7 @@ export class ModalScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
   private titleTxt!: Phaser.GameObjects.Text;
   private pageIndex = 0;
+  private resetConfirmState = false;
 
   private modalW = 396;
   private modalH = 640;
@@ -44,6 +46,7 @@ export class ModalScene extends Phaser.Scene {
     this.currentTab = data.tab || 'shop';
     this.shopScene = data.shopScene;
     this.pageIndex = 0;
+    this.resetConfirmState = false;
   }
 
   public create(): void {
@@ -1150,99 +1153,620 @@ export class ModalScene extends Phaser.Scene {
 
   private renderSettingsTab(): void {
     const W = this.modalW;
-    const soundBtn = this.createActionButton(
-      W / 2,
-      168,
-      276,
-      48,
-      SoundManager.enabled ? '🔊 Âm Thanh: ĐANG BẬT' : '🔇 Âm Thanh: ĐANG TẮT',
-      TASTE_THEME.colors.infoTeal,
-      () => {
-        SoundManager.enabled = !SoundManager.enabled;
-        this.gs.state.soundEnabled = SoundManager.enabled;
-        this.gs.save();
-        this.renderCurrentTab();
-      }
-    );
+    const isDesktop = this.isDesktop;
+    const audio = AudioManager.getInstance();
+    const isMuted = audio.isMuted();
+    const musicVol = audio.getMusicVolume();
+    const sfxVol = audio.getSfxVolume();
 
-    const resumeBtn = this.createActionButton(
-      W / 2,
-      232,
-      276,
-      48,
-      '▶ TIẾP TỤC KINH DOANH',
-      TASTE_THEME.colors.success,
-      () => this.closeModal()
-    );
+    const cardMargin = 16;
+    const cardW = W - cardMargin * 2;
 
-    const menuBtn = this.createActionButton(
-      W / 2,
-      296,
-      276,
-      48,
-      '🏠 VỀ MÀN HÌNH CHÍNH',
-      TASTE_THEME.colors.accentAmber,
-      () => {
-        this.gs.save();
-        this.scene.stop('ModalScene');
-        this.scene.stop('ShopScene');
-        this.scene.start('MenuScene');
-      }
-    );
+    // Determine active steps for volume: 0: 0%, 1: 30%, 2: 70%, 3: 100%
+    const getVolStep = (vol: number): number => {
+      if (isMuted || vol <= 0.05) return 0;
+      if (vol <= 0.45) return 1;
+      if (vol <= 0.8) return 2;
+      return 3;
+    };
+    const musicStep = getVolStep(musicVol);
+    const sfxStep = getVolStep(sfxVol);
 
-    const tutorialBtn = this.createActionButton(
-      W / 2,
-      356,
-      276,
-      44,
-      '📖 Cẩm Nang Hướng Dẫn Ngày 1',
-      TASTE_THEME.colors.accentPrimary,
-      () => {
-        this.currentTab = 'tutorial';
-        this.pageIndex = 0;
-        this.renderCurrentTab();
-      }
-    );
+    // ========================================================
+    // 1. HERO CTA: TIẾP TỤC KINH DOANH (Resume Game Banner)
+    // ========================================================
+    const resumeY = 104;
+    const resumeH = isDesktop ? 48 : 44;
+    const resumeCon = this.add.container(cardMargin, resumeY);
 
-    const resetBtn = this.createActionButton(
-      W / 2,
-      412,
-      276,
-      42,
-      '🗑️ Xóa Dữ Liệu & Chơi Lại',
-      TASTE_THEME.colors.danger,
-      () => {
-        this.gs.initState(true);
-        this.scene.stop('ModalScene');
-        this.scene.stop('ShopScene');
-        this.scene.start('MenuScene');
-      }
-    );
+    const resumeBg = this.add.graphics();
+    const drawResumeBg = (isHover: boolean, isDown: boolean) => {
+      resumeBg.clear();
+      // Drop shadow
+      resumeBg.fillStyle(0x060403, 0.35);
+      resumeBg.fillRoundedRect(0, 3, cardW, resumeH, 10);
+      // Hero button body
+      const baseCol = isDown
+        ? 0x156337
+        : isHover
+          ? TASTE_THEME.colors.successLight
+          : TASTE_THEME.colors.success;
+      resumeBg.fillStyle(baseCol, 1);
+      resumeBg.fillRoundedRect(0, 0, cardW, resumeH, 10);
+      // Top specular highlight
+      resumeBg.lineStyle(1, 0xffffff, isHover ? 0.45 : 0.28);
+      resumeBg.lineBetween(4, 1, cardW - 4, 1);
+      // Hairline border
+      resumeBg.lineStyle(1, 0x14532d, 0.9);
+      resumeBg.strokeRoundedRect(0, 0, cardW, resumeH, 10);
+    };
+    drawResumeBg(false, false);
+    resumeCon.add(resumeBg);
 
-    const guideCard = this.add.graphics();
-    guideCard.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
-    guideCard.fillRoundedRect(24, 468, W - 48, 126, 10);
-    guideCard.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
-    guideCard.strokeRoundedRect(24, 468, W - 48, 126, 10);
+    // Icon + Label
+    const resumeTxt = this.add
+      .text(cardW / 2, resumeH / 2, '▶  TIẾP TỤC BÁN HÀNG', {
+        fontFamily: TASTE_THEME.fonts.display,
+        fontSize: isDesktop ? '15px' : '13.5px',
+        fontStyle: '800',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5);
+    resumeCon.add(resumeTxt);
 
-    const guideTxt = this.add
+    // Keycap shortcut hint on right (Desktop)
+    if (isDesktop) {
+      const keycapBg = this.add.graphics();
+      keycapBg.fillStyle(0x0f4224, 0.85);
+      keycapBg.fillRoundedRect(cardW - 96, (resumeH - 22) / 2, 84, 22, 5);
+      keycapBg.lineStyle(1, 0x34d399, 0.5);
+      keycapBg.strokeRoundedRect(cardW - 96, (resumeH - 22) / 2, 84, 22, 5);
+      const keycapTxt = this.add
+        .text(cardW - 54, resumeH / 2, 'Space / Esc', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '10px',
+          fontStyle: '700',
+          color: '#a7f3d0',
+        })
+        .setOrigin(0.5);
+      resumeCon.add([keycapBg, keycapTxt]);
+    }
+
+    const resumeHit = this.add
+      .rectangle(cardW / 2, resumeH / 2, cardW, resumeH, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    resumeHit.on('pointerover', () => drawResumeBg(true, false));
+    resumeHit.on('pointerout', () => drawResumeBg(false, false));
+    resumeHit.on('pointerdown', () => {
+      drawResumeBg(false, true);
+      SoundManager.playPop();
+      this.closeModal();
+    });
+    resumeCon.add(resumeHit);
+    this.contentContainer.add(resumeCon);
+
+    // ========================================================
+    // 2. AUDIO & SOUND SYSTEM CARD (Khối Cài Đặt Âm Thanh)
+    // ========================================================
+    const audioCardY = resumeY + resumeH + (isDesktop ? 12 : 10);
+    const audioCardH = isDesktop ? 118 : 132;
+    const audioCon = this.add.container(cardMargin, audioCardY);
+
+    const aBg = this.add.graphics();
+    // Drop shadow
+    aBg.fillStyle(0x060403, 0.2);
+    aBg.fillRoundedRect(0, 2, cardW, audioCardH, 10);
+    // Body
+    aBg.fillStyle(TASTE_THEME.colors.cardWarmAlt, 1);
+    aBg.fillRoundedRect(0, 0, cardW, audioCardH, 10);
+    // Inner chamfer
+    aBg.lineStyle(1, 0xffffff, 0.5);
+    aBg.lineBetween(3, 1, cardW - 3, 1);
+    // Border
+    aBg.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
+    aBg.strokeRoundedRect(0, 0, cardW, audioCardH, 10);
+    audioCon.add(aBg);
+
+    // Audio Section Header (Title on left, Master Mute Toggle on right)
+    const aHeaderTxt = this.add.text(14, 12, '🔊 ÂM THANH & TRẢI NGHIỆM', {
+      fontFamily: TASTE_THEME.fonts.sans,
+      fontSize: isDesktop ? '11.5px' : '10.5px',
+      fontStyle: '800',
+      color: TASTE_THEME.colors.inkDark,
+    });
+    audioCon.add(aHeaderTxt);
+
+    // Master Mute Button Pill
+    const muteW = isDesktop ? 128 : 116;
+    const muteH = 24;
+    const muteX = cardW - muteW - 12;
+    const muteY = 8;
+    const muteBg = this.add.graphics();
+    muteBg.fillStyle(isMuted ? 0x991b1b : 0x0f766e, 1);
+    muteBg.fillRoundedRect(muteX, muteY, muteW, muteH, 6);
+    muteBg.lineStyle(1, isMuted ? 0xef4444 : 0x2dd4bf, 0.6);
+    muteBg.strokeRoundedRect(muteX, muteY, muteW, muteH, 6);
+
+    const muteTxt = this.add
       .text(
-        W / 2,
-        531,
-        '💡 PHÍM TẮT NHANH:\n• [Space]: Mở bán / Vớt cá / Phục vụ khách\n• [1..6]: Chọn nhanh món để chiên vào chảo\n• [R]: Nạp đầy bình Gas & Nhập kho nhanh',
+        muteX + muteW / 2,
+        muteY + muteH / 2,
+        isMuted ? '🔇 ĐANG TẮT TIẾNG' : '🔊 ĐANG BẬT TIẾNG',
         {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '12px',
-          fontStyle: '600',
-          color: TASTE_THEME.colors.inkBody,
-          align: 'center',
-          lineSpacing: 6,
-          wordWrap: { width: W - 76 },
+          fontSize: isDesktop ? '10px' : '9px',
+          fontStyle: '800',
+          color: '#ffffff',
         }
       )
       .setOrigin(0.5);
 
-    this.contentContainer.add([soundBtn, resumeBtn, menuBtn, tutorialBtn, resetBtn, guideCard, guideTxt]);
+    const muteHit = this.add
+      .rectangle(muteX + muteW / 2, muteY + muteH / 2, muteW, muteH, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true });
+    muteHit.on('pointerdown', () => {
+      audio.toggleMute();
+      this.gs.state.soundEnabled = !audio.isMuted();
+      this.gs.save();
+      this.renderCurrentTab();
+    });
+    audioCon.add([muteBg, muteTxt, muteHit]);
+
+    // Volume Step Pill Builder
+    const stepLabels = ['Tắt', '30%', '70%', '100%'];
+    const stepValues = [0, 0.3, 0.7, 1.0];
+    const pillW = isDesktop ? 54 : 44;
+    const pillH = isDesktop ? 26 : 24;
+    const pillGap = isDesktop ? 6 : 4;
+    const totalPillsW = 4 * pillW + 3 * pillGap;
+
+    // --- Row 1: Nhạc nền BGM ---
+    const bgmRowY = isDesktop ? 44 : 42;
+    const bgmLbl = this.add
+      .text(14, bgmRowY + pillH / 2, '🎵 Nhạc nền Lo-fi:', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: isDesktop ? '12px' : '10.5px',
+        fontStyle: '700',
+        color: TASTE_THEME.colors.inkBody,
+      })
+      .setOrigin(0, 0.5);
+    audioCon.add(bgmLbl);
+
+    const bgmPillStartX = cardW - 12 - totalPillsW;
+    stepLabels.forEach((lbl, idx) => {
+      const px = bgmPillStartX + idx * (pillW + pillGap);
+      const isSelected = !isMuted && musicStep === idx;
+      const pG = this.add.graphics();
+      pG.fillStyle(isSelected ? TASTE_THEME.colors.accentPrimary : 0xfcf9f2, 1);
+      pG.fillRoundedRect(px, bgmRowY, pillW, pillH, 5);
+      pG.lineStyle(
+        1,
+        isSelected ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.borderHairlineLight,
+        1
+      );
+      pG.strokeRoundedRect(px, bgmRowY, pillW, pillH, 5);
+
+      const pT = this.add
+        .text(px + pillW / 2, bgmRowY + pillH / 2, lbl, {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: isDesktop ? '11px' : '10px',
+          fontStyle: isSelected ? '800' : '600',
+          color: isSelected ? '#ffffff' : TASTE_THEME.colors.inkDark,
+        })
+        .setOrigin(0.5);
+
+      const pHit = this.add
+        .rectangle(px + pillW / 2, bgmRowY + pillH / 2, pillW, pillH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      pHit.on('pointerdown', () => {
+        audio.setMusicVolume(stepValues[idx]);
+        if (idx > 0 && audio.isMuted()) {
+          audio.setMuted(false);
+        }
+        this.gs.state.soundEnabled = !audio.isMuted();
+        this.gs.save();
+        this.renderCurrentTab();
+      });
+      audioCon.add([pG, pT, pHit]);
+    });
+
+    // --- Row 2: Hiệu ứng SFX ---
+    const sfxRowY = isDesktop ? 78 : 74;
+    const sfxLbl = this.add
+      .text(14, sfxRowY + pillH / 2, '🍳 Tiếng xèo xèo & Chuông:', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: isDesktop ? '12px' : '10.5px',
+        fontStyle: '700',
+        color: TASTE_THEME.colors.inkBody,
+      })
+      .setOrigin(0, 0.5);
+    audioCon.add(sfxLbl);
+
+    const sfxPillStartX = cardW - 12 - totalPillsW;
+    stepLabels.forEach((lbl, idx) => {
+      const px = sfxPillStartX + idx * (pillW + pillGap);
+      const isSelected = !isMuted && sfxStep === idx;
+      const pG = this.add.graphics();
+      pG.fillStyle(isSelected ? TASTE_THEME.colors.accentAmber : 0xfcf9f2, 1);
+      pG.fillRoundedRect(px, sfxRowY, pillW, pillH, 5);
+      pG.lineStyle(
+        1,
+        isSelected ? TASTE_THEME.colors.accentAmber : TASTE_THEME.colors.borderHairlineLight,
+        1
+      );
+      pG.strokeRoundedRect(px, sfxRowY, pillW, pillH, 5);
+
+      const pT = this.add
+        .text(px + pillW / 2, sfxRowY + pillH / 2, lbl, {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: isDesktop ? '11px' : '10px',
+          fontStyle: isSelected ? '800' : '600',
+          color: isSelected ? '#ffffff' : TASTE_THEME.colors.inkDark,
+        })
+        .setOrigin(0.5);
+
+      const pHit = this.add
+        .rectangle(px + pillW / 2, sfxRowY + pillH / 2, pillW, pillH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      pHit.on('pointerdown', () => {
+        audio.setSfxVolume(stepValues[idx]);
+        if (idx > 0 && audio.isMuted()) {
+          audio.setMuted(false);
+        }
+        this.gs.state.soundEnabled = !audio.isMuted();
+        this.gs.save();
+        SoundManager.playButtonClick();
+        this.renderCurrentTab();
+      });
+      audioCon.add([pG, pT, pHit]);
+    });
+
+    this.contentContainer.add(audioCon);
+
+    // ========================================================
+    // 3. NAVIGATION & HELPER ACTIONS
+    // ========================================================
+    const navY = audioCardY + audioCardH + (isDesktop ? 12 : 10);
+
+    if (isDesktop) {
+      // Desktop: 2 Cards side-by-side
+      const cardHalfW = (cardW - 12) / 2;
+      const cardH = 56;
+
+      // Card A: Cẩm nang hướng dẫn
+      const tCard = this.add.container(cardMargin, navY);
+      const tBg = this.add.graphics();
+      const drawTBg = (isH: boolean) => {
+        tBg.clear();
+        tBg.fillStyle(0x060403, 0.2);
+        tBg.fillRoundedRect(0, 2, cardHalfW, cardH, 9);
+        tBg.fillStyle(isH ? 0xfffcf7 : TASTE_THEME.colors.cardWarmAlt, 1);
+        tBg.fillRoundedRect(0, 0, cardHalfW, cardH, 9);
+        tBg.lineStyle(
+          1,
+          isH ? TASTE_THEME.colors.infoTeal : TASTE_THEME.colors.borderHairlineLight,
+          1
+        );
+        tBg.strokeRoundedRect(0, 0, cardHalfW, cardH, 9);
+      };
+      drawTBg(false);
+      tCard.add(tBg);
+
+      const tTitle = this.add.text(14, 13, '📖 CẨM NANG NGÀY 1', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '12px',
+        fontStyle: '800',
+        color: TASTE_THEME.colors.inkDark,
+      });
+      const tSub = this.add.text(14, 32, 'Bí kíp chiên giòn, nhập kho & khách VIP', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10px',
+        fontStyle: '600',
+        color: TASTE_THEME.colors.inkMuted,
+      });
+      const tHit = this.add
+        .rectangle(cardHalfW / 2, cardH / 2, cardHalfW, cardH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      tHit.on('pointerover', () => drawTBg(true));
+      tHit.on('pointerout', () => drawTBg(false));
+      tHit.on('pointerdown', () => {
+        SoundManager.playPop();
+        this.currentTab = 'tutorial';
+        this.pageIndex = 0;
+        this.renderCurrentTab();
+      });
+      tCard.add([tTitle, tSub, tHit]);
+      this.contentContainer.add(tCard);
+
+      // Card B: Về Menu Chính
+      const mCard = this.add.container(cardMargin + cardHalfW + 12, navY);
+      const mBg = this.add.graphics();
+      const drawMBg = (isH: boolean) => {
+        mBg.clear();
+        mBg.fillStyle(0x060403, 0.2);
+        mBg.fillRoundedRect(0, 2, cardHalfW, cardH, 9);
+        mBg.fillStyle(isH ? 0xfffcf7 : TASTE_THEME.colors.cardWarmAlt, 1);
+        mBg.fillRoundedRect(0, 0, cardHalfW, cardH, 9);
+        mBg.lineStyle(
+          1,
+          isH ? TASTE_THEME.colors.accentAmber : TASTE_THEME.colors.borderHairlineLight,
+          1
+        );
+        mBg.strokeRoundedRect(0, 0, cardHalfW, cardH, 9);
+      };
+      drawMBg(false);
+      mCard.add(mBg);
+
+      const mTitle = this.add.text(14, 13, '🏠 VỀ MÀN HÌNH CHÍNH', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '12px',
+        fontStyle: '800',
+        color: TASTE_THEME.colors.inkDark,
+      });
+      const mSub = this.add.text(14, 32, 'Tự động lưu toàn bộ dữ liệu xe cá viên', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10px',
+        fontStyle: '600',
+        color: TASTE_THEME.colors.inkMuted,
+      });
+      const mHit = this.add
+        .rectangle(cardHalfW / 2, cardH / 2, cardHalfW, cardH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      mHit.on('pointerover', () => drawMBg(true));
+      mHit.on('pointerout', () => drawMBg(false));
+      mHit.on('pointerdown', () => {
+        SoundManager.playPop();
+        this.gs.save();
+        this.scene.stop('ModalScene');
+        this.scene.stop('ShopScene');
+        this.scene.start('MenuScene');
+      });
+      mCard.add([mTitle, mSub, mHit]);
+      this.contentContainer.add(mCard);
+    } else {
+      // Mobile: 2 Compact Action Buttons stacked
+      const btnH = 38;
+      const tBtn = this.createActionButton(
+        W / 2,
+        navY + btnH / 2,
+        cardW,
+        btnH,
+        '📖 Cẩm Nang Hướng Dẫn Ngày 1',
+        TASTE_THEME.colors.infoTeal,
+        () => {
+          this.currentTab = 'tutorial';
+          this.pageIndex = 0;
+          this.renderCurrentTab();
+        }
+      );
+      const mBtn = this.createActionButton(
+        W / 2,
+        navY + btnH + 6 + btnH / 2,
+        cardW,
+        btnH,
+        '🏠 Về Màn Hình Chính (Lưu Game)',
+        TASTE_THEME.colors.accentAmber,
+        () => {
+          this.gs.save();
+          this.scene.stop('ModalScene');
+          this.scene.stop('ShopScene');
+          this.scene.start('MenuScene');
+        }
+      );
+      this.contentContainer.add([tBtn, mBtn]);
+    }
+
+    // ========================================================
+    // 4. SHORTCUT CHALKBOARD GUIDE (Bảng Phấn Tra Cứu Phím Tắt)
+    // ========================================================
+    const navBottomY = navY + (isDesktop ? 56 : 82);
+    const guideY = navBottomY + (isDesktop ? 12 : 10);
+    const guideH = isDesktop ? 144 : 148;
+    const guideCon = this.add.container(cardMargin, guideY);
+
+    const gBg = this.add.graphics();
+    // Shadow
+    gBg.fillStyle(0x060403, 0.3);
+    gBg.fillRoundedRect(0, 3, cardW, guideH, 10);
+    // Dark chalkboard body
+    gBg.fillStyle(0x18130f, 0.98);
+    gBg.fillRoundedRect(0, 0, cardW, guideH, 10);
+    // Subtle top wood/brass rail
+    gBg.fillStyle(TASTE_THEME.colors.woodMid, 0.85);
+    gBg.fillRoundedRect(0, 0, cardW, 4, { tl: 10, tr: 10, bl: 0, br: 0 });
+    // Hairline frame
+    gBg.lineStyle(1, 0x4a382b, 1);
+    gBg.strokeRoundedRect(0, 0, cardW, guideH, 10);
+    guideCon.add(gBg);
+
+    // Chalkboard Title
+    const gTitle = this.add.text(14, 12, '📋 BẢNG PHÍM TẮT & THAO TÁC NHANH', {
+      fontFamily: TASTE_THEME.fonts.sans,
+      fontSize: isDesktop ? '11px' : '10px',
+      fontStyle: '800',
+      color: TASTE_THEME.colors.inkGold,
+    });
+    guideCon.add(gTitle);
+
+    if (isDesktop) {
+      // 2-Column Clean Keycap Layout
+      const col1X = 14;
+      const col2X = cardW / 2 + 8;
+      const rowY1 = 38;
+      const rowY2 = 72;
+      const rowY3 = 106;
+
+      const items = [
+        { col: col1X, y: rowY1, key: 'Space', desc: 'Mở bán / Vớt cá / Đưa đĩa khách' },
+        { col: col1X, y: rowY2, key: '1 .. 6', desc: 'Chọn món trong tủ bỏ vào chảo' },
+        { col: col1X, y: rowY3, key: 'R', desc: 'Bơm đầy bình Gas & Nhập kho' },
+        { col: col2X, y: rowY1, key: 'Z X C', desc: 'Gắp dưa leo, rau răm, trái tắc' },
+        { col: col2X, y: rowY2, key: 'B N', desc: 'Rưới tương ớt, tương đen, sốt' },
+        { col: col2X, y: rowY3, key: 'Esc', desc: 'Tạm dừng / Đóng cài đặt' },
+      ];
+
+      items.forEach((it) => {
+        // Keycap badge
+        const kCap = this.add.graphics();
+        kCap.fillStyle(0x0f0b08, 1);
+        kCap.fillRoundedRect(it.col, it.y, 48, 22, 4);
+        kCap.lineStyle(1, 0x3d2f24, 1);
+        kCap.strokeRoundedRect(it.col, it.y, 48, 22, 4);
+        const kTxt = this.add
+          .text(it.col + 24, it.y + 11, it.key, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '10px',
+            fontStyle: '800',
+            color: '#86efac',
+          })
+          .setOrigin(0.5);
+
+        const dTxt = this.add
+          .text(it.col + 54, it.y + 11, it.desc, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '10.5px',
+            fontStyle: '600',
+            color: TASTE_THEME.colors.inkOnDark,
+          })
+          .setOrigin(0, 0.5);
+        guideCon.add([kCap, kTxt, dTxt]);
+      });
+    } else {
+      // Mobile compact bullet list
+      const mItems = [
+        { key: 'Chạm khay', desc: 'Chọn món cần chiên vào chảo' },
+        { key: 'Chạm vỉ/chảo', desc: 'Vớt cá chín lên khay giữ ấm' },
+        { key: 'Gắp rau / sốt', desc: 'Chạm khay dưa, rau & chai tương' },
+        { key: 'Bơm Gas', desc: 'Chạm đồng hồ Gas để nạp đầy' },
+      ];
+      mItems.forEach((it, idx) => {
+        const iy = 34 + idx * 26;
+        const kCap = this.add.graphics();
+        kCap.fillStyle(0x0f0b08, 1);
+        kCap.fillRoundedRect(14, iy, 74, 20, 4);
+        kCap.lineStyle(1, 0x3d2f24, 1);
+        kCap.strokeRoundedRect(14, iy, 74, 20, 4);
+        const kTxt = this.add
+          .text(14 + 37, iy + 10, it.key, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '9px',
+            fontStyle: '800',
+            color: '#86efac',
+          })
+          .setOrigin(0.5);
+
+        const dTxt = this.add
+          .text(94, iy + 10, it.desc, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '10px',
+            fontStyle: '600',
+            color: TASTE_THEME.colors.inkOnDark,
+          })
+          .setOrigin(0, 0.5);
+        guideCon.add([kCap, kTxt, dTxt]);
+      });
+    }
+    this.contentContainer.add(guideCon);
+
+    // ========================================================
+    // 5. DANGER ZONE: XÓA DỮ LIỆU & CHƠI LẠI (Anti-Frustration UX)
+    // ========================================================
+    const resetY = guideY + guideH + (isDesktop ? 12 : 10);
+    const resetH = isDesktop ? 40 : 38;
+
+    if (!this.resetConfirmState) {
+      // Normal subtle button
+      const rCon = this.add.container(cardMargin, resetY);
+      const rBg = this.add.graphics();
+      const drawRBg = (isH: boolean) => {
+        rBg.clear();
+        rBg.fillStyle(isH ? 0xfef2f2 : 0xfbf2f0, 0.85);
+        rBg.fillRoundedRect(0, 0, cardW, resetH, 8);
+        rBg.lineStyle(1, isH ? 0xef4444 : 0xfca5a5, 0.85);
+        rBg.strokeRoundedRect(0, 0, cardW, resetH, 8);
+      };
+      drawRBg(false);
+      rCon.add(rBg);
+
+      const rTxt = this.add
+        .text(cardW / 2, resetH / 2, '🗑️ Xóa Dữ Liệu & Khởi Động Lại Quán Từ Đầu', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: isDesktop ? '11px' : '10px',
+          fontStyle: '700',
+          color: '#b91c1c',
+        })
+        .setOrigin(0.5);
+      rCon.add(rTxt);
+
+      const rHit = this.add
+        .rectangle(cardW / 2, resetH / 2, cardW, resetH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      rHit.on('pointerover', () => drawRBg(true));
+      rHit.on('pointerout', () => drawRBg(false));
+      rHit.on('pointerdown', () => {
+        SoundManager.playWarning();
+        this.resetConfirmState = true;
+        this.renderCurrentTab();
+      });
+      rCon.add(rHit);
+      this.contentContainer.add(rCon);
+    } else {
+      // Active confirmation state: Safe two-step confirmation
+      const rCon = this.add.container(cardMargin, resetY);
+      const confirmW = cardW * 0.68;
+      const cancelW = cardW - confirmW - 8;
+
+      // Confirm Button (Solid Red)
+      const cfBg = this.add.graphics();
+      cfBg.fillStyle(0x991b1b, 1);
+      cfBg.fillRoundedRect(0, 0, confirmW, resetH, 8);
+      cfBg.lineStyle(1, 0xef4444, 1);
+      cfBg.strokeRoundedRect(0, 0, confirmW, resetH, 8);
+      const cfTxt = this.add
+        .text(confirmW / 2, resetH / 2, '⚠️ XÁC NHẬN XÓA TOÀN BỘ?', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: isDesktop ? '11px' : '10px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const cfHit = this.add
+        .rectangle(confirmW / 2, resetH / 2, confirmW, resetH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      cfHit.on('pointerdown', () => {
+        this.gs.initState(true);
+        this.scene.stop('ModalScene');
+        this.scene.stop('ShopScene');
+        this.scene.start('MenuScene');
+      });
+      rCon.add([cfBg, cfTxt, cfHit]);
+
+      // Cancel Button (Neutral Slate)
+      const ccX = confirmW + 8;
+      const ccBg = this.add.graphics();
+      ccBg.fillStyle(0x334155, 1);
+      ccBg.fillRoundedRect(ccX, 0, cancelW, resetH, 8);
+      ccBg.lineStyle(1, 0x64748b, 1);
+      ccBg.strokeRoundedRect(ccX, 0, cancelW, resetH, 8);
+      const ccTxt = this.add
+        .text(ccX + cancelW / 2, resetH / 2, '✕ Hủy', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: isDesktop ? '11px' : '10px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const ccHit = this.add
+        .rectangle(ccX + cancelW / 2, resetH / 2, cancelW, resetH, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      ccHit.on('pointerdown', () => {
+        this.resetConfirmState = false;
+        this.renderCurrentTab();
+      });
+      rCon.add([ccBg, ccTxt, ccHit]);
+
+      this.contentContainer.add(rCon);
+    }
   }
 
   private renderTutorialTab(): void {

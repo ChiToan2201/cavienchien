@@ -162,10 +162,11 @@ export class PreloadScene extends Phaser.Scene {
       statusText.setText('Đang chuẩn bị nguyên liệu tươi & căn chỉnh khay bán hàng...');
     });
 
-    // 1. Reference banner & Mascot
+    // 1. Reference banner, Mascot & Shop Background
     this.load.image('ref_banner', 'assets/reference-banner.png');
     this.load.image('mascot', 'assets/mascot.png');
     this.load.image('mascot_transparent', 'assets/mascot-transparent.png');
+    this.load.image('shop_bg', 'assets/shop-bg.jpg');
 
     // 2. Characters (Chef 5-frame horizontal sheet + 10 Customer archetypes including VIP & Bad)
     this.load.image('chef_raw', 'assets/characters/chef-sheet.png');
@@ -182,7 +183,19 @@ export class PreloadScene extends Phaser.Scene {
 
     // 3. Equipment
     this.load.image('equip_fryer', 'assets/equipment/fryer.png');
+    this.load.image('equip_fryer_tray', 'assets/equipment/fryer_tray.png');
     this.load.image('equip_gas_tank', 'assets/equipment/gas-tank.png');
+    this.load.image('equip_oil_bottle', 'assets/equipment/oil-bottle.png');
+
+    // FX Spritesheets from agent-sprite-forge
+    this.load.spritesheet('fx_oil_splash', 'assets/equipment/fx_oil_splash.png', {
+      frameWidth: 128,
+      frameHeight: 128,
+    });
+    this.load.spritesheet('fx_oil_bubble', 'assets/equipment/fx_oil_bubble.png', {
+      frameWidth: 128,
+      frameHeight: 128,
+    });
 
     // 4. Real Food & Condiment Sprites (including all 7 previously unused props!)
     this.load.image('food_ca_vien_truyen_thong', 'assets/foods/ca-vien-truyen-thong.png');
@@ -305,6 +318,24 @@ export class PreloadScene extends Phaser.Scene {
 
     // 6. Generate 6 structured cel-shaded food sprites (`codeart2d` workflow, `art_source: "code"`)
     SpriteForgeProcessor.generateCodeArt2DFoods(this);
+
+    // 7. Register boiling oil & frying splash FX animations (`codeart2d.fx.v1`)
+    if (!this.anims.exists('anim_oil_splash')) {
+      this.anims.create({
+        key: 'anim_oil_splash',
+        frames: this.anims.generateFrameNumbers('fx_oil_splash', { start: 0, end: 6 }),
+        frameRate: 18,
+        repeat: 0,
+      });
+    }
+    if (!this.anims.exists('anim_oil_bubble')) {
+      this.anims.create({
+        key: 'anim_oil_bubble',
+        frames: this.anims.generateFrameNumbers('fx_oil_bubble', { start: 0, end: 5 }),
+        frameRate: 12,
+        repeat: -1,
+      });
+    }
 
     this.scene.start('MenuScene');
   }

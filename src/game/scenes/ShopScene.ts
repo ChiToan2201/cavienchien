@@ -18,10 +18,16 @@ import { applyHiDPICamera, getLogicalDimensions } from '../config/display';
 interface FryerSlotUI {
   container: Phaser.GameObjects.Container;
   bg: Phaser.GameObjects.Graphics;
+  traySprite: Phaser.GameObjects.Image;
+  oilSurface: Phaser.GameObjects.Graphics;
+  bubbleSprite: Phaser.GameObjects.Sprite;
+  splashSprite: Phaser.GameObjects.Sprite;
   foodIcon: Phaser.GameObjects.Image;
   statusText: Phaser.GameObjects.Text;
   progressFill: Phaser.GameObjects.Graphics;
   bubbleEmitter: Phaser.GameObjects.Graphics;
+  slotBadgeBg?: Phaser.GameObjects.Graphics;
+  slotBadgeTxt?: Phaser.GameObjects.Text;
   slotW: number;
   slotH: number;
   baseY: number;
@@ -133,7 +139,7 @@ export class ShopScene extends Phaser.Scene {
     const rightX = 718;
     const rightW = W - gut - rightX; // 542px
 
-    // Base warm espresso backdrop
+    // Base warm espresso backdrop for the shop scene
     bg.fillGradientStyle(
       TASTE_THEME.colors.bgBase,
       TASTE_THEME.colors.bgBase,
@@ -143,31 +149,59 @@ export class ShopScene extends Phaser.Scene {
     );
     bg.fillRect(0, 0, W, H);
 
-    // === LEFT TOP CARD: Street Service Counter (`y: 78..304`) ===
-    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-    bg.fillRoundedRect(leftX, 78, leftW, 226, 14);
-    // Warm street evening glow inside the counter bay
-    bg.fillStyle(0xf59e0b, 0.08);
-    bg.fillRoundedRect(leftX + 2, 96, leftW - 4, 174, 12);
+    // === PHẦN QUẦY BÁN HÀNG: Background ảnh đường phố Sài Gòn ban đêm (`y: 78..304`, height: 226) ===
+    const counterY = 78;
+    const counterH = 226;
 
-    // Crisp red-and-white Vietnamese street cart awning scalloped roof
+    if (this.textures.exists('shop_bg')) {
+      const bayCenterX = leftX + leftW / 2;
+      const bayCenterY = counterY + 104;
+
+      const bayImg = this.add.image(bayCenterX, bayCenterY, 'shop_bg');
+      // Scale to cover the quầy width with pixel art clarity
+      const bayScale = Math.max(leftW / bayImg.width, counterH / bayImg.height, 0.675);
+      bayImg.setScale(bayScale);
+
+      // Mask to clip strictly inside the rounded counter card
+      const maskG = this.make.graphics({});
+      maskG.fillStyle(0xffffff);
+      maskG.fillRoundedRect(leftX, counterY, leftW, counterH, 14);
+      bayImg.setMask(maskG.createGeometryMask());
+    } else {
+      bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      bg.fillRoundedRect(leftX, counterY, leftW, counterH, 14);
+    }
+
+    // Counter decorative overlays (Awning roof, wooden ledge, warm glow, hairline border)
+    const counterOverlay = this.add.graphics();
+
+    // Subtle warm street-lamp glow inside the counter
+    counterOverlay.fillStyle(0xf59e0b, 0.05);
+    counterOverlay.fillRoundedRect(leftX, counterY, leftW, counterH, 14);
+
+    // Crisp red-and-white Vietnamese street cart awning scalloped roof at the top (y: 78..96)
     const stripeCount = 14;
     const stripeW = leftW / stripeCount;
     for (let i = 0; i < stripeCount; i++) {
       const sx = leftX + i * stripeW;
       const isRed = i % 2 === 0;
-      bg.fillStyle(isRed ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.cardCream, 1);
-      bg.fillRect(sx, 78, stripeW, 16);
-      bg.fillCircle(sx + stripeW / 2, 94, stripeW / 2);
+      counterOverlay.fillStyle(
+        isRed ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.cardCream,
+        1
+      );
+      counterOverlay.fillRect(sx, counterY, stripeW, 16);
+      counterOverlay.fillCircle(sx + stripeW / 2, counterY + 16, stripeW / 2);
     }
 
-    // Warm wooden counter ledge at the bottom of the customer bay (`y: 268..304`)
-    bg.fillStyle(TASTE_THEME.colors.woodMid, 1);
-    bg.fillRoundedRect(leftX, 270, leftW, 34, { tl: 4, tr: 4, bl: 14, br: 14 });
-    bg.fillStyle(TASTE_THEME.colors.woodLight, 0.45);
-    bg.fillRect(leftX + 4, 272, leftW - 8, 6);
-    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-    bg.strokeRoundedRect(leftX, 78, leftW, 226, 14);
+    // Warm wooden counter ledge at the bottom of the counter bay (y: 270..304)
+    counterOverlay.fillStyle(TASTE_THEME.colors.woodMid, 1);
+    counterOverlay.fillRoundedRect(leftX, 270, leftW, 34, { tl: 4, tr: 4, bl: 14, br: 14 });
+    counterOverlay.fillStyle(TASTE_THEME.colors.woodLight, 0.45);
+    counterOverlay.fillRect(leftX + 4, 272, leftW - 8, 6);
+
+    // 1.5px hairline border framing the quầy
+    counterOverlay.lineStyle(1.5, TASTE_THEME.colors.borderHairlineDark, 1);
+    counterOverlay.strokeRoundedRect(leftX, counterY, leftW, counterH, 14);
 
     // === LEFT BOTTOM CARD: Industrial Cooking Station (`y: 318..644`) ===
     bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
@@ -194,15 +228,57 @@ export class ShopScene extends Phaser.Scene {
       })
       .setOrigin(1, 0);
 
-    // === RIGHT CARD: 12 Food Trays Glass Showcase Counter (`x: 718..1260, y: 78..644`) ===
-    bg.fillStyle(TASTE_THEME.colors.bgGlassShowcase, 1);
-    bg.fillRoundedRect(rightX, 78, rightW, 566, 14);
-    // Warm wooden cabinet trim at top and bottom of glass showcase
-    bg.fillStyle(TASTE_THEME.colors.woodDark, 0.65);
-    bg.fillRoundedRect(rightX, 78, rightW, 44, { tl: 14, tr: 14, bl: 0, br: 0 });
-    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-    bg.strokeRoundedRect(rightX, 78, rightW, 566, 14);
-    bg.lineBetween(rightX, 122, rightX + rightW, 122);
+    // === RIGHT CARD: 12 Food Trays Glass Showcase Cabinet (`x: 718..1260, y: 78..644`, width 542, height 566) ===
+    const cabinetX = rightX;
+    const cabinetY = 78;
+    const cabinetW = rightW;
+    const cabinetH = 566;
+
+    // 1. Cabinet Interior Base (Deep warm illuminated showcase chamber)
+    bg.fillStyle(0x19120d, 1);
+    bg.fillRoundedRect(cabinetX, cabinetY, cabinetW, cabinetH, 14);
+
+    // 2. Warm LED Top Lighting Gradient (illumination radiating from top light strip)
+    bg.fillStyle(0xf59e0b, 0.12);
+    bg.fillRoundedRect(cabinetX + 4, 122, cabinetW - 8, 140, 8);
+    bg.fillStyle(0xf59e0b, 0.05);
+    bg.fillRoundedRect(cabinetX + 4, 260, cabinetW - 8, 120, 8);
+
+    // 3. Four Tiered Stainless Steel Shelves (Behind each row of trays)
+    const shelfRowsY = [218, 308, 398, 488];
+    shelfRowsY.forEach((sy) => {
+      // Shelf drop shadow
+      bg.fillStyle(0x0a0705, 0.5);
+      bg.fillRect(cabinetX + 12, sy + 3, cabinetW - 24, 6);
+      // Stainless steel shelf rail
+      bg.fillStyle(0x352b22, 1);
+      bg.fillRoundedRect(cabinetX + 10, sy, cabinetW - 20, 6, 2);
+      // Top metallic edge highlight
+      bg.lineStyle(1, 0x9aa5b1, 0.55);
+      bg.lineBetween(cabinetX + 12, sy, cabinetX + cabinetW - 12, sy);
+      // Shelf underside shadow
+      bg.lineStyle(1, 0x18120d, 0.9);
+      bg.lineBetween(cabinetX + 10, sy + 6, cabinetX + cabinetW - 10, sy + 6);
+    });
+
+    // 4. Glass Reflection Highlights (Diagonal subtle glass reflections)
+    bg.lineStyle(1, 0xffffff, 0.04);
+    bg.lineBetween(cabinetX + 60, 126, cabinetX + cabinetW - 160, 480);
+    bg.lineBetween(cabinetX + 90, 126, cabinetX + cabinetW - 130, 480);
+
+    // 5. Wooden Cabinet Trim at Top (Header Signboard)
+    bg.fillStyle(TASTE_THEME.colors.woodDark, 0.9);
+    bg.fillRoundedRect(cabinetX, cabinetY, cabinetW, 44, { tl: 14, tr: 14, bl: 0, br: 0 });
+    // Gold trim bar under header
+    bg.fillStyle(TASTE_THEME.colors.accentAmber, 0.9);
+    bg.fillRect(cabinetX, 120, cabinetW, 2);
+    // Top specular highlight
+    bg.lineStyle(1, 0xd89c5a, 0.4);
+    bg.lineBetween(cabinetX + 14, cabinetY + 1, cabinetX + cabinetW - 14, cabinetY + 1);
+
+    // 6. Outer Cabinet Frame (1.5px Hairline Border)
+    bg.lineStyle(1.5, TASTE_THEME.colors.borderHairlineDark, 1);
+    bg.strokeRoundedRect(cabinetX, cabinetY, cabinetW, cabinetH, 14);
 
     this.add.text(rightX + 18, 92, '🍱 TỦ KHAY ĐỒ CHIÊN (12 MÓN)', {
       fontFamily: TASTE_THEME.fonts.sans,
@@ -233,6 +309,7 @@ export class ShopScene extends Phaser.Scene {
     const gut = TASTE_THEME.layout.mobile.gutter; // 12px
     const cardW = W - gut * 2; // 396px
 
+    // Base warm espresso backdrop
     bg.fillGradientStyle(
       TASTE_THEME.colors.bgBase,
       TASTE_THEME.colors.bgBase,
@@ -242,32 +319,90 @@ export class ShopScene extends Phaser.Scene {
     );
     bg.fillRect(0, 0, W, H);
 
-    // 1. Customer & Awning Card (`y: 66..230`)
-    bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-    bg.fillRoundedRect(gut, 66, cardW, 164, 12);
+    // === PHẦN QUẦY BÁN HÀNG MOBILE (`y: 66..230`, height 164) ===
+    const counterY = 66;
+    const counterH = 164;
+
+    if (this.textures.exists('shop_bg')) {
+      const bayCenterX = gut + cardW / 2;
+      const bayCenterY = counterY + 76;
+
+      const bayImg = this.add.image(bayCenterX, bayCenterY, 'shop_bg');
+      const bayScale = Math.max(cardW / bayImg.width, counterH / bayImg.height, 0.39);
+      bayImg.setScale(bayScale);
+
+      const maskG = this.make.graphics({});
+      maskG.fillStyle(0xffffff);
+      maskG.fillRoundedRect(gut, counterY, cardW, counterH, 12);
+      bayImg.setMask(maskG.createGeometryMask());
+    } else {
+      bg.fillStyle(TASTE_THEME.colors.bgSurface, 1);
+      bg.fillRoundedRect(gut, counterY, cardW, counterH, 12);
+    }
+
+    const counterOverlay = this.add.graphics();
+
+    // Subtle warm street evening glow
+    counterOverlay.fillStyle(0xf59e0b, 0.05);
+    counterOverlay.fillRoundedRect(gut, counterY, cardW, counterH, 12);
 
     const stripeCount = 10;
     const stripeW = cardW / stripeCount;
     for (let i = 0; i < stripeCount; i++) {
       const sx = gut + i * stripeW;
-      bg.fillStyle(
+      counterOverlay.fillStyle(
         i % 2 === 0 ? TASTE_THEME.colors.accentPrimary : TASTE_THEME.colors.cardCream,
         1
       );
-      bg.fillRect(sx, 66, stripeW, 14);
-      bg.fillCircle(sx + stripeW / 2, 80, stripeW / 2);
+      counterOverlay.fillRect(sx, counterY, stripeW, 14);
+      counterOverlay.fillCircle(sx + stripeW / 2, counterY + 14, stripeW / 2);
     }
 
     // Wooden counter ledge
-    bg.fillStyle(TASTE_THEME.colors.woodMid, 1);
-    bg.fillRoundedRect(gut, 206, cardW, 24, { tl: 3, tr: 3, bl: 12, br: 12 });
-    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-    bg.strokeRoundedRect(gut, 66, cardW, 164, 12);
+    counterOverlay.fillStyle(TASTE_THEME.colors.woodMid, 1);
+    counterOverlay.fillRoundedRect(gut, 206, cardW, 24, { tl: 3, tr: 3, bl: 12, br: 12 });
+    counterOverlay.lineStyle(1.5, TASTE_THEME.colors.borderHairlineDark, 1);
+    counterOverlay.strokeRoundedRect(gut, counterY, cardW, counterH, 12);
 
-    // 2. 12-Tray Showcase Card (`y: 238..544`)
-    bg.fillStyle(TASTE_THEME.colors.bgGlassShowcase, 1);
+    // 2. 12-Tray Showcase Cabinet (`y: 238..544`, width cardW, height 306)
+    // 2.1 Cabinet Interior Base (Deep warm illuminated showcase chamber)
+    bg.fillStyle(0x19120d, 1);
     bg.fillRoundedRect(gut, 238, cardW, 306, 12);
-    bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+
+    // 2.2 Warm LED Top Lighting Gradient
+    bg.fillStyle(0xf59e0b, 0.1);
+    bg.fillRoundedRect(gut + 4, 242, cardW - 8, 80, 6);
+    bg.fillStyle(0xf59e0b, 0.04);
+    bg.fillRoundedRect(gut + 4, 322, cardW - 8, 70, 6);
+
+    // 2.3 Four Tiered Stainless Steel Shelves (Behind each mobile row of trays)
+    const mShelvesY = [289, 343, 397, 451];
+    mShelvesY.forEach((sy) => {
+      // Shelf drop shadow
+      bg.fillStyle(0x0a0705, 0.5);
+      bg.fillRect(gut + 6, sy + 2, cardW - 12, 4);
+      // Stainless steel shelf rail
+      bg.fillStyle(0x352b22, 1);
+      bg.fillRoundedRect(gut + 6, sy, cardW - 12, 4, 1.5);
+      // Top metallic edge highlight
+      bg.lineStyle(1, 0x9aa5b1, 0.5);
+      bg.lineBetween(gut + 8, sy, gut + cardW - 8, sy);
+      // Underside shadow
+      bg.lineStyle(1, 0x18120d, 0.85);
+      bg.lineBetween(gut + 6, sy + 4, gut + cardW - 6, sy + 4);
+    });
+
+    // 2.4 Subtle Diagonal Glass Reflection Lines
+    bg.lineStyle(1, 0xffffff, 0.035);
+    bg.lineBetween(gut + 30, 242, gut + cardW - 60, 450);
+    bg.lineBetween(gut + 50, 242, gut + cardW - 40, 450);
+
+    // 2.5 Top Gold Accent Trim Bar
+    bg.fillStyle(TASTE_THEME.colors.accentAmber, 0.85);
+    bg.fillRect(gut, 238, cardW, 2);
+
+    // 2.6 Outer Cabinet Frame (1.5px Hairline Border)
+    bg.lineStyle(1.5, TASTE_THEME.colors.borderHairlineDark, 1);
     bg.strokeRoundedRect(gut, 238, cardW, 306, 12);
 
     // 3. Cooking Station Card (`y: 552..714`)
@@ -337,12 +472,18 @@ export class ShopScene extends Phaser.Scene {
       this.add.existing(this.player);
 
       const mobileProps: Array<{ key: string; x: number; y: number; scale: number }> = [
-        { key: 'prop_chai_tuong_ot', x: 26, y: 216, scale: 0.19 },
-        { key: 'prop_chai_tuong_den', x: 42, y: 216, scale: 0.19 },
-        { key: 'prop_bat_sot_me', x: 62, y: 218, scale: 0.17 },
-        { key: 'prop_dua_leo', x: 82, y: 218, scale: 0.18 },
-        { key: 'prop_rau_ram', x: 374, y: 218, scale: 0.18 },
-        { key: 'prop_topping_tac', x: 394, y: 218, scale: 0.17 },
+        { key: 'prop_chai_tuong_ot', x: 18, y: 216, scale: 0.18 },
+        { key: 'prop_chai_tuong_den', x: 30, y: 216, scale: 0.18 },
+        { key: 'prop_lo_muoi', x: 56, y: 217, scale: 0.15 },
+        { key: 'prop_lo_tieu', x: 68, y: 217, scale: 0.15 },
+        { key: 'prop_bat_tuong_ot', x: 84, y: 218, scale: 0.16 },
+        { key: 'prop_bat_tuong_den', x: 100, y: 218, scale: 0.16 },
+        { key: 'prop_bat_sot_me', x: 116, y: 218, scale: 0.16 },
+        { key: 'prop_dua_leo', x: 338, y: 218, scale: 0.17 },
+        { key: 'prop_rau_ram', x: 354, y: 218, scale: 0.17 },
+        { key: 'prop_topping_tac', x: 370, y: 218, scale: 0.16 },
+        { key: 'prop_topping_ot', x: 386, y: 218, scale: 0.16 },
+        { key: 'prop_topping_hanh', x: 400, y: 218, scale: 0.16 },
       ];
       for (const p of mobileProps) {
         if (this.textures.exists(p.key)) {
@@ -492,16 +633,16 @@ export class ShopScene extends Phaser.Scene {
         this.trays.set(foodDef.id, tray);
       });
     } else {
-      // Mobile Portrait 3x4 Grid (`x: 12..408`, width `396`, `y: 239..486`)
+      // Mobile Portrait 3x4 Grid (`x: 12..408`, width `396`, `y: 239..452`)
       const trayW = 120;
-      const trayH = 58;
+      const trayH = 50;
       const gapX = 7;
-      const gapY = 5;
+      const gapY = 4;
 
       const totalGridW = cols * trayW + (cols - 1) * gapX; // 374px
       const { width: screenW } = getLogicalDimensions();
       const startX = (screenW - totalGridW) / 2 + trayW / 2;
-      const startY = 268;
+      const startY = 264;
 
       INITIAL_FOODS.forEach((foodDef, index) => {
         const col = index % cols;
@@ -528,87 +669,533 @@ export class ShopScene extends Phaser.Scene {
 
       const stationCon = this.add.container(stationX, stationY);
 
-      // Warm wooden tray background
+      // Warm espresso & slate-wood tray base (anti-slop, rich tactile depth)
       const sBg = this.add.graphics();
-      sBg.fillStyle(0x181411, 0.96);
+      // Outer drop shadow
+      sBg.fillStyle(0x0a0705, 0.4);
+      sBg.fillRoundedRect(0, 4, stationW, stationH, { tl: 0, tr: 0, bl: 14, br: 14 });
+      // Tray body
+      sBg.fillStyle(0x16120e, 0.98);
       sBg.fillRoundedRect(0, 0, stationW, stationH, { tl: 0, tr: 0, bl: 14, br: 14 });
-      sBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
+      // Top chamfer highlight
+      sBg.lineStyle(1, 0x2e2319, 0.9);
+      sBg.lineBetween(1, 1, stationW - 2, 1);
+      // Subtle hairline border
+      sBg.lineStyle(1, 0x3d2d1f, 1);
       sBg.strokeRoundedRect(0, 0, stationW, stationH, { tl: 0, tr: 0, bl: 14, br: 14 });
 
-      // Subtle vertical divider between Veggies and Sauces
-      sBg.lineStyle(1, 0x3d3126, 0.8);
-      sBg.lineBetween(271, 10, 271, stationH - 12);
+      // Architectural brass/wood divider between Veggie Bay and Sauce Bay
+      sBg.lineStyle(1, 0x100b08, 0.9);
+      sBg.lineBetween(270, 8, 270, stationH - 10);
+      sBg.lineStyle(1, 0x443324, 0.85);
+      sBg.lineBetween(271, 8, 271, stationH - 10);
       stationCon.add(sBg);
 
       // === LEFT BAY: KHAY RAU ĂN KÈM ===
       const vHeader = this.add.text(14, 10, '🥗 KHAY RAU ĂN KÈM', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '11px',
+        fontSize: '10.5px',
         fontStyle: '800',
         color: '#4ade80',
       });
-      this.veggieStockText = this.add.text(14, 26, `Kho: ${this.gs.state.veggieStock}/40 phần`, {
+
+      // Stock indicator badge pill
+      const vStockBg = this.add.graphics();
+      vStockBg.fillStyle(0x122419, 0.9);
+      vStockBg.fillRoundedRect(14, 25, 126, 18, 4);
+      vStockBg.lineStyle(1, 0x1e3a29, 0.9);
+      vStockBg.strokeRoundedRect(14, 25, 126, 18, 4);
+
+      this.veggieStockText = this.add.text(20, 28, `Kho: ${this.gs.state.veggieStock}/40 phần`, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '10px',
+        fontSize: '9.5px',
         fontStyle: '700',
         color: this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0',
       });
 
-      // Button: + Nhập rau (15k)
-      const restockBtnBg = this.add.graphics();
-      restockBtnBg.fillStyle(0x0f766e, 1);
-      restockBtnBg.fillRoundedRect(172, 8, 88, 22, 5);
+      // Tactile arcade restock button (+ Nhập 15k)
+      const restockCon = this.add.container(174, 24);
+      const restockBg = this.add.graphics();
+      const drawRestockBtn = (isHover: boolean, isDown: boolean) => {
+        restockBg.clear();
+        const baseColor = isDown ? 0x064e3b : isHover ? 0x059669 : 0x0f766e;
+        // Button bevel shadow
+        restockBg.fillStyle(0x064e3b, 1);
+        restockBg.fillRoundedRect(0, 2, 84, 20, 4);
+        // Button surface
+        restockBg.fillStyle(baseColor, 1);
+        restockBg.fillRoundedRect(0, isDown ? 1 : 0, 84, 20, 4);
+        // Top highlight line
+        if (!isDown) {
+          restockBg.lineStyle(1, 0x34d399, 0.7);
+          restockBg.lineBetween(2, 1, 82, 1);
+        }
+      };
+      drawRestockBtn(false, false);
+
       const restockBtnLbl = this.add
-        .text(216, 19, '+ Nhập 15k', {
+        .text(42, 10, '+ Nhập 15k', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '9.5px',
           fontStyle: '800',
           color: '#ffffff',
         })
         .setOrigin(0.5);
+
       const restockHit = this.add
-        .rectangle(216, 19, 88, 24, 0xffffff, 0)
+        .rectangle(42, 10, 84, 22, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
+
+      restockHit.on('pointerover', () => drawRestockBtn(true, false));
+      restockHit.on('pointerout', () => drawRestockBtn(false, false));
       restockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
         e.event.stopPropagation();
-        this.triggerRestockVeggie();
+        drawRestockBtn(false, true);
+        this.tweens.add({
+          targets: restockCon,
+          scale: 0.94,
+          duration: 60,
+          yoyo: true,
+          onComplete: () => {
+            drawRestockBtn(false, false);
+            this.triggerRestockVeggie();
+          },
+        });
       });
-      stationCon.add([vHeader, this.veggieStockText, restockBtnBg, restockBtnLbl, restockHit]);
+      restockCon.add([restockBg, restockBtnLbl, restockHit]);
 
-      // 3 Veggie Plates
+      stationCon.add([vHeader, vStockBg, this.veggieStockText, restockCon]);
+
+      // 3 Veggie Plates (Dưa leo [Z], Đậu bắp [X], Xà lách [C])
       const veggies: Array<{ type: VeggieType; key: string; name: string; keyHint: string }> = [
-        { type: 'dua_leo', key: 'veggie_dua_leo', name: 'Dưa leo', keyHint: '[Z]' },
-        { type: 'dau_bap', key: 'veggie_dau_bap', name: 'Đậu bắp', keyHint: '[X]' },
-        { type: 'xa_lach', key: 'veggie_xa_lach', name: 'Xà lách', keyHint: '[C]' },
+        { type: 'dua_leo', key: 'veggie_dua_leo', name: 'Dưa leo', keyHint: 'Z' },
+        { type: 'dau_bap', key: 'veggie_dau_bap', name: 'Đậu bắp', keyHint: 'X' },
+        { type: 'xa_lach', key: 'veggie_xa_lach', name: 'Xà lách', keyHint: 'C' },
       ];
 
       veggies.forEach((v, idx) => {
         const itemX = 14 + idx * 84;
         const itemY = 48;
         const itemW = 76;
-        const itemH = 82;
+        const itemH = 84;
 
         const card = this.add.container(itemX, itemY);
+
+        // Coaster / Plate Pedestal surface
         const cBg = this.add.graphics();
-        cBg.fillStyle(0x27211b, 0.95);
-        cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
-        cBg.lineStyle(1, 0x443627, 1);
-        cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        const drawCardBg = (isHover: boolean) => {
+          cBg.clear();
+          // Drop shadow under card
+          cBg.fillStyle(0x0a0705, 0.35);
+          cBg.fillRoundedRect(0, 2, itemW, itemH, 8);
+          // Ceramic surface
+          cBg.fillStyle(0x231b15, 0.96);
+          cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
+          // Subtle inner top rim
+          cBg.lineStyle(1, 0x36281e, 0.8);
+          cBg.lineBetween(3, 1, itemW - 4, 1);
+          // Border
+          cBg.lineStyle(isHover ? 1.5 : 1, isHover ? 0x22c55e : 0x3d2d1f, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        };
+        drawCardBg(false);
         card.add(cBg);
 
+        // Soft drop shadow beneath veggie sprite
+        const shadow = this.add.graphics();
+        shadow.fillStyle(0x0a0705, 0.45);
+        shadow.fillEllipse(itemW / 2, 44, 40, 12);
+        card.add(shadow);
+
+        // Vegetable Image
         if (this.textures.exists(v.key)) {
-          const img = this.add.image(itemW / 2, 34, v.key);
+          const img = this.add.image(itemW / 2, 30, v.key);
           const maxDim = Math.max(img.width, img.height);
-          img.setScale(Math.min(50 / maxDim, 0.45));
+          img.setScale(Math.min(46 / maxDim, 0.42));
+          card.add(img);
+        }
+
+        // Clean Typography: Item Name
+        const nameLbl = this.add
+          .text(itemW / 2, 54, v.name, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '9.5px',
+            fontStyle: '800',
+            color: '#f7f1e8',
+          })
+          .setOrigin(0.5);
+        card.add(nameLbl);
+
+        // Arcade Keycap Badge [Z] [X] [C]
+        const keyCapBg = this.add.graphics();
+        keyCapBg.fillStyle(0x130e0a, 0.95);
+        keyCapBg.fillRoundedRect((itemW - 24) / 2, 65, 24, 13, 3);
+        keyCapBg.lineStyle(1, 0x443324, 0.9);
+        keyCapBg.strokeRoundedRect((itemW - 24) / 2, 65, 24, 13, 3);
+        const keyCapTxt = this.add
+          .text(itemW / 2, 71.5, v.keyHint, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '8.5px',
+            fontStyle: '800',
+            color: '#86efac',
+          })
+          .setOrigin(0.5);
+        card.add([keyCapBg, keyCapTxt]);
+
+        // Interactive Hit area
+        const hit = this.add
+          .rectangle(itemW / 2, itemH / 2, itemW, itemH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerover', () => {
+          drawCardBg(true);
+          this.tweens.add({
+            targets: card,
+            y: itemY - 2,
+            duration: 80,
+            ease: 'Cubic.easeOut',
+          });
+        });
+        hit.on('pointerout', () => {
+          drawCardBg(false);
+          this.tweens.add({
+            targets: card,
+            y: itemY,
+            duration: 80,
+            ease: 'Cubic.easeOut',
+          });
+        });
+        hit.on('pointerdown', () => {
+          this.tweens.add({
+            targets: card,
+            scale: 0.93,
+            duration: 60,
+            yoyo: true,
+            onComplete: () => this.onVeggieTapped(v.type),
+          });
+        });
+
+        card.add(hit);
+        stationCon.add(card);
+      });
+
+      // === RIGHT BAY: QUẦY NƯỚC CHẤM GIA TRUYỀN ===
+      const sHeader = this.add.text(285, 10, '🥢 NƯỚC CHẤM GIA TRUYỀN', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '10.5px',
+        fontStyle: '800',
+        color: '#fbbf24',
+      });
+
+      // Subtitle pill badge
+      const sSubBg = this.add.graphics();
+      sSubBg.fillStyle(0x23180f, 0.9);
+      sSubBg.fillRoundedRect(stationW - 108, 10, 94, 18, 4);
+      sSubBg.lineStyle(1, 0x452f1d, 0.8);
+      sSubBg.strokeRoundedRect(stationW - 108, 10, 94, 18, 4);
+
+      const sSub = this.add
+        .text(stationW - 61, 19, 'Vô hạn • +2k/đĩa', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8.5px',
+          fontStyle: '700',
+          color: '#d4a373',
+        })
+        .setOrigin(0.5);
+      stationCon.add([sHeader, sSubBg, sSub]);
+
+      // 3 Sauces: Sriracha Red, Caramel Dark Molasses (zero purple!), Apricot Amber
+      const sauces: Array<{
+        type: SauceType;
+        key: string;
+        name: string;
+        keyHint: string;
+        accentColor: number;
+        badgeColor: string;
+      }> = [
+        {
+          type: 'tuong_ot',
+          key: 'sauce_tuong_ot',
+          name: 'Tương Ớt',
+          keyHint: 'V',
+          accentColor: 0xef4444,
+          badgeColor: '#fca5a5',
+        },
+        {
+          type: 'tuong_den',
+          key: 'sauce_tuong_den',
+          name: 'Tương Đen',
+          keyHint: 'B',
+          accentColor: 0xb45309,
+          badgeColor: '#fcd34d',
+        },
+        {
+          type: 'tuong_xi_muoi',
+          key: 'sauce_tuong_xi_muoi',
+          name: 'Xí Muội',
+          keyHint: 'N',
+          accentColor: 0xd97706,
+          badgeColor: '#fed7aa',
+        },
+      ];
+
+      sauces.forEach((s, idx) => {
+        const itemX = 285 + idx * 82;
+        const itemY = 36;
+        const itemW = 76;
+        const itemH = 96;
+
+        const card = this.add.container(itemX, itemY);
+
+        // Bottle Stand Coaster surface
+        const cBg = this.add.graphics();
+        const drawCardBg = (isHover: boolean) => {
+          cBg.clear();
+          // Drop shadow under card
+          cBg.fillStyle(0x0a0705, 0.35);
+          cBg.fillRoundedRect(0, 2, itemW, itemH, 8);
+          // Ceramic surface
+          cBg.fillStyle(0x231b15, 0.96);
+          cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
+          // Subtle inner top rim
+          cBg.lineStyle(1, 0x36281e, 0.8);
+          cBg.lineBetween(3, 1, itemW - 4, 1);
+          // Border
+          cBg.lineStyle(isHover ? 1.5 : 1, isHover ? s.accentColor : 0x3d2d1f, 1);
+          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        };
+        drawCardBg(false);
+        card.add(cBg);
+
+        // Drop shadow beneath sauce bottle
+        const shadow = this.add.graphics();
+        shadow.fillStyle(0x0a0705, 0.45);
+        shadow.fillEllipse(itemW / 2, 54, 36, 10);
+        card.add(shadow);
+
+        let bottleImg: Phaser.GameObjects.Image | null = null;
+        if (this.textures.exists(s.key)) {
+          bottleImg = this.add.image(itemW / 2, 34, s.key);
+          const maxDim = Math.max(bottleImg.width, bottleImg.height);
+          bottleImg.setScale(Math.min(50 / maxDim, 0.42));
+          card.add(bottleImg);
+        }
+
+        // Clean Typography: Sauce Name
+        const nameLbl = this.add
+          .text(itemW / 2, 67, s.name, {
+            fontFamily: TASTE_THEME.fonts.sans,
+            fontSize: '9.5px',
+            fontStyle: '800',
+            color: '#f7f1e8',
+          })
+          .setOrigin(0.5);
+        card.add(nameLbl);
+
+        // Arcade Keycap Badge [V] [B] [N]
+        const keyCapBg = this.add.graphics();
+        keyCapBg.fillStyle(0x130e0a, 0.95);
+        keyCapBg.fillRoundedRect((itemW - 24) / 2, 78, 24, 13, 3);
+        keyCapBg.lineStyle(1, 0x443324, 0.9);
+        keyCapBg.strokeRoundedRect((itemW - 24) / 2, 78, 24, 13, 3);
+        const keyCapTxt = this.add
+          .text(itemW / 2, 84.5, s.keyHint, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '8.5px',
+            fontStyle: '800',
+            color: s.badgeColor,
+          })
+          .setOrigin(0.5);
+        card.add([keyCapBg, keyCapTxt]);
+
+        // Interactive Hit area
+        const hit = this.add
+          .rectangle(itemW / 2, itemH / 2, itemW, itemH, 0xffffff, 0)
+          .setInteractive({ useHandCursor: true });
+
+        hit.on('pointerover', () => {
+          drawCardBg(true);
+          this.tweens.add({
+            targets: card,
+            y: itemY - 2,
+            duration: 80,
+            ease: 'Cubic.easeOut',
+          });
+        });
+        hit.on('pointerout', () => {
+          drawCardBg(false);
+          this.tweens.add({
+            targets: card,
+            y: itemY,
+            duration: 80,
+            ease: 'Cubic.easeOut',
+          });
+        });
+
+        hit.on('pointerdown', () => {
+          // Playful bottle tilt & squeeze
+          if (bottleImg) {
+            this.tweens.add({
+              targets: bottleImg,
+              angle: 16,
+              scaleY: bottleImg.scaleY * 0.86,
+              duration: 75,
+              yoyo: true,
+              ease: 'Back.easeOut',
+              onComplete: () => {
+                bottleImg!.setAngle(0);
+              },
+            });
+          }
+          this.tweens.add({
+            targets: card,
+            scale: 0.93,
+            duration: 60,
+            yoyo: true,
+            onComplete: () => this.onSauceTapped(s.type),
+          });
+        });
+
+        card.add(hit);
+        stationCon.add(card);
+      });
+
+      this.add.existing(stationCon);
+    } else {
+      // Mobile Portrait Condiment Station (`x: 12..408, y: 458..542`, width 396, height 84)
+      const { width: screenW } = getLogicalDimensions();
+      const gut = 12;
+      const cardW = screenW - gut * 2;
+      const stationH = 84;
+      const mCon = this.add.container(gut, 458);
+
+      // Warm espresso cabinet surface
+      const mBg = this.add.graphics();
+      // Drop shadow
+      mBg.fillStyle(0x0a0705, 0.4);
+      mBg.fillRoundedRect(0, 3, cardW, stationH, 8);
+      // Main panel
+      mBg.fillStyle(0x16120e, 0.98);
+      mBg.fillRoundedRect(0, 0, cardW, stationH, 8);
+      // Top chamfer highlight
+      mBg.lineStyle(1, 0x2e2319, 0.9);
+      mBg.lineBetween(1, 1, cardW - 2, 1);
+      // Hairline border
+      mBg.lineStyle(1, 0x3d2d1f, 1);
+      mBg.strokeRoundedRect(0, 0, cardW, stationH, 8);
+
+      // Center divider between Veggies and Sauces
+      const midX = Math.floor(cardW / 2);
+      mBg.lineStyle(1, 0x100b08, 0.9);
+      mBg.lineBetween(midX - 1, 6, midX - 1, stationH - 6);
+      mBg.lineStyle(1, 0x443324, 0.85);
+      mBg.lineBetween(midX, 6, midX, stationH - 6);
+      mCon.add(mBg);
+
+      // === MOBILE LEFT BAY: KHAY RAU ĂN KÈM ===
+      const vHeader = this.add.text(8, 7, '🥗 RAU KÈM', {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '9.5px',
+        fontStyle: '800',
+        color: '#4ade80',
+      });
+
+      this.veggieStockText = this.add.text(8, 19, `Kho: ${this.gs.state.veggieStock}/40`, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '8.5px',
+        fontStyle: '700',
+        color: this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0',
+      });
+
+      // Mobile Restock Button (+ Nhập 15k)
+      const mRestockCon = this.add.container(midX - 66, 6);
+      const mRestockBg = this.add.graphics();
+      const drawMRestock = (isDown: boolean) => {
+        mRestockBg.clear();
+        mRestockBg.fillStyle(0x064e3b, 1);
+        mRestockBg.fillRoundedRect(0, 2, 60, 18, 3);
+        mRestockBg.fillStyle(isDown ? 0x064e3b : 0x0f766e, 1);
+        mRestockBg.fillRoundedRect(0, isDown ? 1 : 0, 60, 18, 3);
+        if (!isDown) {
+          mRestockBg.lineStyle(1, 0x34d399, 0.6);
+          mRestockBg.lineBetween(2, 1, 58, 1);
+        }
+      };
+      drawMRestock(false);
+
+      const mRestockTxt = this.add
+        .text(30, 9, '+ Nhập 15k', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+
+      const mRestockHit = this.add
+        .rectangle(30, 9, 60, 20, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+
+      mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        drawMRestock(true);
+        this.tweens.add({
+          targets: mRestockCon,
+          scale: 0.93,
+          duration: 50,
+          yoyo: true,
+          onComplete: () => {
+            drawMRestock(false);
+            this.triggerRestockVeggie();
+          },
+        });
+      });
+      mRestockCon.add([mRestockBg, mRestockTxt, mRestockHit]);
+      mCon.add([vHeader, this.veggieStockText, mRestockCon]);
+
+      // 3 Mobile Veggie Plates
+      const mobileVeggies: Array<{ type: VeggieType; key: string; name: string }> = [
+        { type: 'dua_leo', key: 'veggie_dua_leo', name: 'Dưa leo' },
+        { type: 'dau_bap', key: 'veggie_dau_bap', name: 'Đậu bắp' },
+        { type: 'xa_lach', key: 'veggie_xa_lach', name: 'Xà lách' },
+      ];
+
+      const itemW = 58;
+      const itemH = 48;
+      const itemY = 28;
+
+      mobileVeggies.forEach((v, idx) => {
+        const itemX = 6 + idx * 62;
+        const card = this.add.container(itemX, itemY);
+
+        const cBg = this.add.graphics();
+        cBg.fillStyle(0x0a0705, 0.35);
+        cBg.fillRoundedRect(0, 2, itemW, itemH, 6);
+        cBg.fillStyle(0x231b15, 0.98);
+        cBg.fillRoundedRect(0, 0, itemW, itemH, 6);
+        cBg.lineStyle(1, 0x166534, 0.85);
+        cBg.strokeRoundedRect(0, 0, itemW, itemH, 6);
+        card.add(cBg);
+
+        // Ground shadow
+        const shadow = this.add.graphics();
+        shadow.fillStyle(0x0a0705, 0.4);
+        shadow.fillEllipse(itemW / 2, 27, 28, 8);
+        card.add(shadow);
+
+        if (this.textures.exists(v.key)) {
+          const img = this.add.image(itemW / 2, 18, v.key);
+          const maxDim = Math.max(img.width, img.height);
+          img.setScale(Math.min(28 / maxDim, 0.3));
           card.add(img);
         }
 
         const lbl = this.add
-          .text(itemW / 2, 68, `${v.name} ${v.keyHint}`, {
+          .text(itemW / 2, 38, v.name, {
             fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '9.5px',
+            fontSize: '8.5px',
             fontStyle: '800',
-            color: '#fef08a',
+            color: '#f7f1e8',
           })
           .setOrigin(0.5);
         card.add(lbl);
@@ -620,78 +1207,79 @@ export class ShopScene extends Phaser.Scene {
         hit.on('pointerdown', () => {
           this.tweens.add({
             targets: card,
-            scale: 0.94,
-            duration: 60,
+            scale: 0.91,
+            duration: 50,
             yoyo: true,
             onComplete: () => this.onVeggieTapped(v.type),
           });
         });
 
-        hit.on('pointerover', () => {
-          cBg.lineStyle(1.5, 0x4ade80, 1);
-          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
-        });
-        hit.on('pointerout', () => {
-          cBg.lineStyle(1, 0x443627, 1);
-          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
-        });
-
         card.add(hit);
-        stationCon.add(card);
+        mCon.add(card);
       });
 
-      // === RIGHT BAY: QUẦY NƯỚC CHẤM GIA TRUYỀN ===
-      const sHeader = this.add.text(285, 10, '🥢 NƯỚC CHẤM GIA TRUYỀN', {
+      // === MOBILE RIGHT BAY: QUẦY NƯỚC CHẤM GIA TRUYỀN ===
+      const sHeader = this.add.text(midX + 8, 7, '🥢 SỐT CHẤM', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '11px',
+        fontSize: '9.5px',
         fontStyle: '800',
-        color: '#fca311',
+        color: '#fbbf24',
       });
       const sSub = this.add
-        .text(stationW - 14, 11, 'Vô hạn • +2k/đĩa', {
+        .text(cardW - 8, 7, 'Vô hạn • +2k', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
+          fontSize: '8px',
           fontStyle: '700',
-          color: '#94a3b8',
+          color: '#d4a373',
         })
         .setOrigin(1, 0);
-      stationCon.add([sHeader, sSub]);
+      mCon.add([sHeader, sSub]);
 
-      // 3 Sauces
-      const sauces: Array<{ type: SauceType; key: string; name: string; keyHint: string; color: number }> = [
-        { type: 'tuong_ot', key: 'sauce_tuong_ot', name: 'Tương Ớt', keyHint: '[V]', color: 0xef4444 },
-        { type: 'tuong_den', key: 'sauce_tuong_den', name: 'Tương Đen', keyHint: '[B]', color: 0xa855f7 },
-        { type: 'tuong_xi_muoi', key: 'sauce_tuong_xi_muoi', name: 'Xí Muội', keyHint: '[N]', color: 0xf59e0b },
+      // 3 Mobile Sauce Bottles
+      const mobileSauces: Array<{
+        type: SauceType;
+        key: string;
+        name: string;
+        borderColor: number;
+      }> = [
+        { type: 'tuong_ot', key: 'sauce_tuong_ot', name: 'Tương Ớt', borderColor: 0x991b1b },
+        { type: 'tuong_den', key: 'sauce_tuong_den', name: 'Tương Đen', borderColor: 0x854d0e },
+        { type: 'tuong_xi_muoi', key: 'sauce_tuong_xi_muoi', name: 'Xí Muội', borderColor: 0xb45309 },
       ];
 
-      sauces.forEach((s, idx) => {
-        const itemX = 285 + idx * 82;
-        const itemY = 36;
-        const itemW = 76;
-        const itemH = 94;
-
+      mobileSauces.forEach((s, idx) => {
+        const itemX = midX + 6 + idx * 62;
         const card = this.add.container(itemX, itemY);
+
         const cBg = this.add.graphics();
-        cBg.fillStyle(0x27211b, 0.95);
-        cBg.fillRoundedRect(0, 0, itemW, itemH, 8);
-        cBg.lineStyle(1, 0x443627, 1);
-        cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
+        cBg.fillStyle(0x0a0705, 0.35);
+        cBg.fillRoundedRect(0, 2, itemW, itemH, 6);
+        cBg.fillStyle(0x231b15, 0.98);
+        cBg.fillRoundedRect(0, 0, itemW, itemH, 6);
+        cBg.lineStyle(1, s.borderColor, 0.85);
+        cBg.strokeRoundedRect(0, 0, itemW, itemH, 6);
         card.add(cBg);
+
+        // Ground shadow
+        const shadow = this.add.graphics();
+        shadow.fillStyle(0x0a0705, 0.4);
+        shadow.fillEllipse(itemW / 2, 28, 24, 7);
+        card.add(shadow);
 
         let bottleImg: Phaser.GameObjects.Image | null = null;
         if (this.textures.exists(s.key)) {
-          bottleImg = this.add.image(itemW / 2, 40, s.key);
+          bottleImg = this.add.image(itemW / 2, 18, s.key);
           const maxDim = Math.max(bottleImg.width, bottleImg.height);
-          bottleImg.setScale(Math.min(54 / maxDim, 0.42));
+          bottleImg.setScale(Math.min(30 / maxDim, 0.28));
           card.add(bottleImg);
         }
 
         const lbl = this.add
-          .text(itemW / 2, 80, `${s.name} ${s.keyHint}`, {
+          .text(itemW / 2, 38, s.name, {
             fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '9.5px',
+            fontSize: '8.5px',
             fontStyle: '800',
-            color: '#fef08a',
+            color: '#f7f1e8',
           })
           .setOrigin(0.5);
         card.add(lbl);
@@ -706,7 +1294,7 @@ export class ShopScene extends Phaser.Scene {
               targets: bottleImg,
               angle: 15,
               scaleY: bottleImg.scaleY * 0.88,
-              duration: 80,
+              duration: 70,
               yoyo: true,
               onComplete: () => {
                 bottleImg!.setAngle(0);
@@ -715,104 +1303,15 @@ export class ShopScene extends Phaser.Scene {
           }
           this.tweens.add({
             targets: card,
-            scale: 0.94,
-            duration: 60,
+            scale: 0.91,
+            duration: 50,
             yoyo: true,
             onComplete: () => this.onSauceTapped(s.type),
           });
         });
 
-        hit.on('pointerover', () => {
-          cBg.lineStyle(1.5, s.color, 1);
-          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
-        });
-        hit.on('pointerout', () => {
-          cBg.lineStyle(1, 0x443627, 1);
-          cBg.strokeRoundedRect(0, 0, itemW, itemH, 8);
-        });
-
         card.add(hit);
-        stationCon.add(card);
-      });
-
-      this.add.existing(stationCon);
-    } else {
-      // Mobile Portrait Condiment Station (`x: 12..408, y: 490..550`, width 396, height 60)
-      const { width: screenW } = getLogicalDimensions();
-      const gut = 12;
-      const cardW = screenW - gut * 2;
-      const mCon = this.add.container(gut, 490);
-
-      const mBg = this.add.graphics();
-      mBg.fillStyle(0x181411, 0.96);
-      mBg.fillRoundedRect(0, 0, cardW, 60, 8);
-      mBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      mBg.strokeRoundedRect(0, 0, cardW, 60, 8);
-      mCon.add(mBg);
-
-      // Top Header: Veggie Stock Indicator & Restock Button
-      this.veggieStockText = this.add.text(8, 7, `🥒 Kho: ${this.gs.state.veggieStock}/40`, {
-        fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '9.5px',
-        fontStyle: '800',
-        color: this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0',
-      });
-
-      const mRestockBg = this.add.graphics();
-      mRestockBg.fillStyle(0x0f766e, 1);
-      mRestockBg.fillRoundedRect(cardW - 74, 4, 68, 17, 4);
-      const mRestockTxt = this.add
-        .text(cardW - 40, 12, '+ Nhập 15k', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '8.5px',
-          fontStyle: '800',
-          color: '#ffffff',
-        })
-        .setOrigin(0.5);
-      const mRestockHit = this.add
-        .rectangle(cardW - 40, 12, 70, 20, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
-        e.event.stopPropagation();
-        this.triggerRestockVeggie();
-      });
-      mCon.add([this.veggieStockText, mRestockBg, mRestockTxt, mRestockHit]);
-
-      // 3 Veggie mini buttons + 3 Sauce mini buttons
-      const miniButtons: Array<{ label: string; action: () => void; color: number }> = [
-        { label: '🥒 Dưa', action: () => this.onVeggieTapped('dua_leo'), color: 0x22c55e },
-        { label: '🫑 Bắp', action: () => this.onVeggieTapped('dau_bap'), color: 0x22c55e },
-        { label: '🥗 Lách', action: () => this.onVeggieTapped('xa_lach'), color: 0x22c55e },
-        { label: '🌶️ Ớt', action: () => this.onSauceTapped('tuong_ot'), color: 0xef4444 },
-        { label: '🥢 Đen', action: () => this.onSauceTapped('tuong_den'), color: 0xa855f7 },
-        { label: '🍑 XíM', action: () => this.onSauceTapped('tuong_xi_muoi'), color: 0xf59e0b },
-      ];
-
-      const btnW = Math.floor((cardW - 14) / 6);
-      miniButtons.forEach((b, i) => {
-        const bx = 6 + i * btnW;
-        const bBg = this.add.graphics();
-        bBg.fillStyle(0x27211b, 1);
-        bBg.fillRoundedRect(bx, 24, btnW - 4, 30, 5);
-        bBg.lineStyle(1, b.color, 0.8);
-        bBg.strokeRoundedRect(bx, 24, btnW - 4, 30, 5);
-        mCon.add(bBg);
-
-        const bTxt = this.add
-          .text(bx + (btnW - 4) / 2, 39, b.label, {
-            fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '9.5px',
-            fontStyle: '800',
-            color: '#ffffff',
-          })
-          .setOrigin(0.5);
-        mCon.add(bTxt);
-
-        const bHit = this.add
-          .rectangle(bx + (btnW - 4) / 2, 39, btnW - 4, 30, 0xffffff, 0)
-          .setInteractive({ useHandCursor: true });
-        bHit.on('pointerdown', () => b.action());
-        mCon.add(bHit);
+        mCon.add(card);
       });
 
       this.add.existing(mCon);
@@ -821,17 +1320,42 @@ export class ShopScene extends Phaser.Scene {
 
   private buildCookingStation(): void {
     if (this.isDesktop) {
-      // Left Top: Registered Gas Tank Widget (`x: 88, y: 430`)
-      const gasCon = this.add.container(88, 430);
+      // Left Top: Registered Gas Tank Widget (`x: 88, y: 428`, width 100, height 118)
+      const gasCon = this.add.container(88, 428);
       const gasPanel = this.add.graphics();
-      gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      gasPanel.fillRoundedRect(-50, -58, 100, 116, 8);
-      gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      gasPanel.strokeRoundedRect(-50, -58, 100, 116, 8);
+      // Drop shadow
+      gasPanel.fillStyle(0x0a0705, 0.4);
+      gasPanel.fillRoundedRect(-50, -56, 100, 118, 10);
+      // Card surface
+      gasPanel.fillStyle(0x18120e, 0.98);
+      gasPanel.fillRoundedRect(-50, -58, 100, 118, 10);
+      // Top chamfer highlight
+      gasPanel.lineStyle(1, 0x2e2319, 0.9);
+      gasPanel.lineBetween(-48, -57, 48, -57);
+      // Hairline border
+      gasPanel.lineStyle(1, 0x3d2d1f, 1);
+      gasPanel.strokeRoundedRect(-50, -58, 100, 118, 10);
       gasCon.add(gasPanel);
 
+      // Header Tag
+      const gasHeader = this.add
+        .text(0, -44, '🔥 BÌNH GAS', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: '#f59e0b',
+        })
+        .setOrigin(0.5);
+      gasCon.add(gasHeader);
+
+      // Contact shadow under gas cylinder
+      const gasShadow = this.add.graphics();
+      gasShadow.fillStyle(0x0a0705, 0.45);
+      gasShadow.fillEllipse(0, -4, 32, 9);
+      gasCon.add(gasShadow);
+
       if (this.textures.exists('equip_gas_tank')) {
-        const gasImg = this.add.image(0, -22, 'equip_gas_tank').setScale(0.32);
+        const gasImg = this.add.image(0, -18, 'equip_gas_tank').setScale(0.28);
         gasCon.add(gasImg);
       }
 
@@ -839,84 +1363,182 @@ export class ShopScene extends Phaser.Scene {
       gasCon.add(this.gasFillBar);
 
       this.gasPercentText = this.add
-        .text(0, 14, 'Gas: 100%', {
+        .text(0, 11, 'Gas: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '11px',
+          fontSize: '9.5px',
           fontStyle: '800',
-          color: TASTE_THEME.colors.inkOnDark,
+          color: '#f7f1e8',
         })
         .setOrigin(0.5);
       gasCon.add(this.gasPercentText);
 
+      // Tactile arcade refill button
+      const refillBtnCon = this.add.container(0, 41);
       const refillBtnBg = this.add.graphics();
-      refillBtnBg.fillStyle(TASTE_THEME.colors.accentAmber, 1);
-      refillBtnBg.fillRoundedRect(-42, 28, 84, 22, 5);
+      const drawRefillBtn = (isHover: boolean, isDown: boolean) => {
+        refillBtnBg.clear();
+        const base = isDown ? 0x064e3b : isHover ? 0x059669 : 0x0f766e;
+        refillBtnBg.fillStyle(0x064e3b, 1);
+        refillBtnBg.fillRoundedRect(-42, isDown ? 1 : 2, 84, 18, 4);
+        refillBtnBg.fillStyle(base, 1);
+        refillBtnBg.fillRoundedRect(-42, isDown ? 1 : 0, 84, 18, 4);
+        if (!isDown) {
+          refillBtnBg.lineStyle(1, 0x34d399, 0.65);
+          refillBtnBg.lineBetween(-40, 1, 40, 1);
+        }
+      };
+      drawRefillBtn(false, false);
+
       this.gasRefillBtnLbl = this.add
-        .text(0, 39, '+ BƠM GAS [G]', {
+        .text(-10, 9, '+ BƠM GAS', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9.5px',
+          fontSize: '8.5px',
           fontStyle: '800',
           color: '#ffffff',
         })
         .setOrigin(0.5);
-      gasCon.add([refillBtnBg, this.gasRefillBtnLbl]);
 
-      const gasHit = this.add
-        .rectangle(0, 0, 100, 116, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      gasHit.on('pointerdown', () => this.triggerRefillGas());
-      gasCon.add(gasHit);
-
-      // Left Bottom: Cooking Oil Widget (`x: 88, y: 556`)
-      const oilCon = this.add.container(88, 556);
-      const oilPanel = this.add.graphics();
-      oilPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      oilPanel.fillRoundedRect(-50, -58, 100, 116, 8);
-      oilPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      oilPanel.strokeRoundedRect(-50, -58, 100, 116, 8);
-      oilCon.add(oilPanel);
-
-      const oilTitle = this.add
-        .text(0, -38, '🛢️ CHẢO DẦU', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '10px',
+      const gasKeycap = this.add
+        .text(28, 9, '[G]', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '8px',
           fontStyle: '800',
-          color: TASTE_THEME.colors.inkGold,
+          color: '#86efac',
         })
         .setOrigin(0.5);
-      oilCon.add(oilTitle);
+
+      const gasHit = this.add
+        .rectangle(0, 9, 84, 20, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+
+      gasHit.on('pointerover', () => drawRefillBtn(true, false));
+      gasHit.on('pointerout', () => drawRefillBtn(false, false));
+      gasHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        drawRefillBtn(false, true);
+        this.tweens.add({
+          targets: refillBtnCon,
+          scale: 0.93,
+          duration: 50,
+          yoyo: true,
+          onComplete: () => {
+            drawRefillBtn(false, false);
+            this.triggerRefillGas();
+          },
+        });
+      });
+      refillBtnCon.add([refillBtnBg, this.gasRefillBtnLbl, gasKeycap, gasHit]);
+      gasCon.add(refillBtnCon);
+
+      // Left Bottom: Cooking Oil Widget (`x: 88, y: 556`, width 100, height 118)
+      const oilCon = this.add.container(88, 556);
+      const oilPanel = this.add.graphics();
+      // Drop shadow
+      oilPanel.fillStyle(0x0a0705, 0.4);
+      oilPanel.fillRoundedRect(-50, -56, 100, 118, 10);
+      // Card surface
+      oilPanel.fillStyle(0x18120e, 0.98);
+      oilPanel.fillRoundedRect(-50, -58, 100, 118, 10);
+      // Top chamfer highlight
+      oilPanel.lineStyle(1, 0x2e2319, 0.9);
+      oilPanel.lineBetween(-48, -57, 48, -57);
+      // Hairline border
+      oilPanel.lineStyle(1, 0x3d2d1f, 1);
+      oilPanel.strokeRoundedRect(-50, -58, 100, 118, 10);
+      oilCon.add(oilPanel);
+
+      // Header Tag
+      const oilHeader = this.add
+        .text(0, -44, '🛢️ CHẤT LƯỢNG DẦU', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '9.5px',
+          fontStyle: '800',
+          color: '#fbbf24',
+        })
+        .setOrigin(0.5);
+      oilCon.add(oilHeader);
+
+      // Contact shadow under oil bottle
+      const oilShadow = this.add.graphics();
+      oilShadow.fillStyle(0x0a0705, 0.45);
+      oilShadow.fillEllipse(0, -4, 32, 9);
+      oilCon.add(oilShadow);
+
+      if (this.textures.exists('equip_oil_bottle')) {
+        const oilImg = this.add.image(0, -18, 'equip_oil_bottle').setScale(0.105);
+        oilCon.add(oilImg);
+      }
 
       this.oilFillBar = this.add.graphics();
       oilCon.add(this.oilFillBar);
 
       this.oilPercentText = this.add
-        .text(0, 14, 'Dầu: 100%', {
+        .text(0, 11, 'Dầu: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '10.5px',
+          fontSize: '9.5px',
           fontStyle: '800',
-          color: TASTE_THEME.colors.inkOnDark,
+          color: '#f7f1e8',
         })
         .setOrigin(0.5);
       oilCon.add(this.oilPercentText);
 
+      // Tactile arcade change oil button
+      const changeOilBtnCon = this.add.container(0, 41);
       const changeOilBtnBg = this.add.graphics();
-      changeOilBtnBg.fillStyle(0xd97706, 1);
-      changeOilBtnBg.fillRoundedRect(-42, 28, 84, 22, 5);
+      const drawChangeOilBtn = (isHover: boolean, isDown: boolean) => {
+        changeOilBtnBg.clear();
+        const base = isDown ? 0x78350f : isHover ? 0xd97706 : 0xb45309;
+        changeOilBtnBg.fillStyle(0x78350f, 1);
+        changeOilBtnBg.fillRoundedRect(-42, isDown ? 1 : 2, 84, 18, 4);
+        changeOilBtnBg.fillStyle(base, 1);
+        changeOilBtnBg.fillRoundedRect(-42, isDown ? 1 : 0, 84, 18, 4);
+        if (!isDown) {
+          changeOilBtnBg.lineStyle(1, 0xfde047, 0.6);
+          changeOilBtnBg.lineBetween(-40, 1, 40, 1);
+        }
+      };
+      drawChangeOilBtn(false, false);
+
       this.oilChangeBtnLbl = this.add
-        .text(0, 39, 'THAY DẦU [O]', {
+        .text(-10, 9, 'THAY DẦU', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9.5px',
+          fontSize: '8.5px',
           fontStyle: '800',
           color: '#ffffff',
         })
         .setOrigin(0.5);
-      oilCon.add([changeOilBtnBg, this.oilChangeBtnLbl]);
+
+      const oilKeycap = this.add
+        .text(28, 9, '[O]', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '8px',
+          fontStyle: '800',
+          color: '#fed7aa',
+        })
+        .setOrigin(0.5);
 
       const oilHit = this.add
-        .rectangle(0, 0, 100, 116, 0xffffff, 0)
+        .rectangle(0, 9, 84, 20, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
-      oilHit.on('pointerdown', () => this.triggerChangeOil());
-      oilCon.add(oilHit);
+
+      oilHit.on('pointerover', () => drawChangeOilBtn(true, false));
+      oilHit.on('pointerout', () => drawChangeOilBtn(false, false));
+      oilHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        drawChangeOilBtn(false, true);
+        this.tweens.add({
+          targets: changeOilBtnCon,
+          scale: 0.93,
+          duration: 50,
+          yoyo: true,
+          onComplete: () => {
+            drawChangeOilBtn(false, false);
+            this.triggerChangeOil();
+          },
+        });
+      });
+      changeOilBtnCon.add([changeOilBtnBg, this.oilChangeBtnLbl, oilKeycap, oilHit]);
+      oilCon.add(changeOilBtnCon);
 
       this.refreshGasUI();
       this.refreshOilUI();
@@ -935,15 +1557,53 @@ export class ShopScene extends Phaser.Scene {
 
         const slotCon = this.add.container(sx, sy);
         const bg = this.add.graphics();
+
+        // Authentic stainless steel oil tray asset
+        const traySprite = this.add
+          .image(0, 0, 'equip_fryer_tray')
+          .setDisplaySize(slotW - 4, slotH - 4);
+
+        // Stamped slot pill badge on top-right rim
+        const slotBadgeBg = this.add.graphics();
+        slotBadgeBg.fillStyle(0x130e0a, 0.95);
+        slotBadgeBg.fillRoundedRect(slotW / 2 - 44, -slotH / 2 + 5, 38, 14, 3);
+        slotBadgeBg.lineStyle(1, 0x3d2d1f, 0.9);
+        slotBadgeBg.strokeRoundedRect(slotW / 2 - 44, -slotH / 2 + 5, 38, 14, 3);
+
+        const slotBadgeTxt = this.add
+          .text(slotW / 2 - 25, -slotH / 2 + 12, `RỔ #${i + 1}`, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '8px',
+            fontStyle: '800',
+            color: '#a8937e',
+          })
+          .setOrigin(0.5);
+
+        // Dynamic oil surface tint overlay inside the tray basin
+        const oilSurface = this.add.graphics();
+
+        // Looping animated boiling bubbles from agent-sprite-forge
+        const bubbleSprite = this.add
+          .sprite(-44, 4, 'fx_oil_bubble')
+          .setScale(0.58)
+          .setAlpha(0.85)
+          .setVisible(false);
+
+        // Splash burst when food enters
+        const splashSprite = this.add
+          .sprite(-44, 2, 'fx_oil_splash')
+          .setScale(0.7)
+          .setVisible(false);
+
         const bubbleEmitter = this.add.graphics();
         const foodIcon = this.add
-          .image(-48, 0, 'food_ca_vien_truyen_thong')
+          .image(-44, 2, 'food_ca_vien_truyen_thong')
           .setScale(0.24)
           .setVisible(false);
         const statusText = this.add
-          .text(16, -12, '', {
+          .text(18, -12, '', {
             fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '12.5px',
+            fontSize: '12px',
             fontStyle: '700',
             color: TASTE_THEME.colors.inkOnDark,
             align: 'center',
@@ -974,14 +1634,33 @@ export class ShopScene extends Phaser.Scene {
         });
         hit.on('pointerdown', () => this.onFryerSlotTapped(i));
 
-        slotCon.add([bg, bubbleEmitter, foodIcon, statusText, progressFill, hit]);
+        slotCon.add([
+          bg,
+          traySprite,
+          slotBadgeBg,
+          slotBadgeTxt,
+          oilSurface,
+          bubbleSprite,
+          foodIcon,
+          splashSprite,
+          statusText,
+          progressFill,
+          bubbleEmitter,
+          hit,
+        ]);
         this.fryerUIs.push({
           container: slotCon,
           bg,
+          traySprite,
+          oilSurface,
+          bubbleSprite,
+          splashSprite,
           foodIcon,
           statusText,
           progressFill,
           bubbleEmitter,
+          slotBadgeBg,
+          slotBadgeTxt,
           slotW,
           slotH,
           baseY: sy,
@@ -1018,92 +1697,178 @@ export class ShopScene extends Phaser.Scene {
         color: TASTE_THEME.colors.inkGold,
       });
 
-      // Gas Tank Mini Box (`x: 52, y: 606`)
-      const gasCon = this.add.container(52, 606);
+      // Gas Tank Mini Box (`x: 54, y: 609`, width: 74, height: 56)
+      const gasCon = this.add.container(54, 609);
       const gasPanel = this.add.graphics();
-      gasPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      gasPanel.fillRoundedRect(-32, -26, 64, 52, 6);
-      gasPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      gasPanel.strokeRoundedRect(-32, -26, 64, 52, 6);
+      gasPanel.fillStyle(0x0a0705, 0.35);
+      gasPanel.fillRoundedRect(-37, -26, 74, 56, 6);
+      gasPanel.fillStyle(0x18120e, 0.98);
+      gasPanel.fillRoundedRect(-37, -28, 74, 56, 6);
+      gasPanel.lineStyle(1, 0x3d2d1f, 1);
+      gasPanel.strokeRoundedRect(-37, -28, 74, 56, 6);
       gasCon.add(gasPanel);
+
+      const gasShadow = this.add.graphics();
+      gasShadow.fillStyle(0x0a0705, 0.4);
+      gasShadow.fillEllipse(-18, 12, 18, 5);
+      gasCon.add(gasShadow);
+
+      if (this.textures.exists('equip_gas_tank')) {
+        const gasImg = this.add.image(-18, 0, 'equip_gas_tank').setScale(0.18);
+        gasCon.add(gasImg);
+      }
 
       this.gasFillBar = this.add.graphics();
       gasCon.add(this.gasFillBar);
 
       this.gasPercentText = this.add
-        .text(0, -6, 'Gas: 100%', {
+        .text(16, -14, 'Gas: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontStyle: '800',
-          color: TASTE_THEME.colors.inkOnDark,
+          color: '#f7f1e8',
         })
         .setOrigin(0.5);
       gasCon.add(this.gasPercentText);
 
+      const gasBtnCon = this.add.container(16, 14);
+      const gasBtnBg = this.add.graphics();
+      const drawMobileGasBtn = (isDown: boolean) => {
+        gasBtnBg.clear();
+        gasBtnBg.fillStyle(0x064e3b, 1);
+        gasBtnBg.fillRoundedRect(-17, 2, 34, 15, 3);
+        gasBtnBg.fillStyle(isDown ? 0x064e3b : 0x0f766e, 1);
+        gasBtnBg.fillRoundedRect(-17, isDown ? 1 : 0, 34, 15, 3);
+      };
+      drawMobileGasBtn(false);
+
       this.gasRefillBtnLbl = this.add
-        .text(0, 13, '+ GAS', {
+        .text(-4, 7.5, '+GAS', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '8.5px',
+          fontSize: '7.5px',
           fontStyle: '800',
           color: '#ffffff',
-          backgroundColor: '#d97706',
-          padding: { left: 4, right: 4, top: 1, bottom: 1 },
         })
         .setOrigin(0.5);
-      gasCon.add(this.gasRefillBtnLbl);
+
+      const mGasKey = this.add
+        .text(11, 7.5, 'G', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '7px',
+          fontStyle: '800',
+          color: '#86efac',
+        })
+        .setOrigin(0.5);
 
       const gasHit = this.add
-        .rectangle(0, 0, 64, 52, 0xffffff, 0)
+        .rectangle(0, 0, 74, 56, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
-      gasHit.on('pointerdown', () => this.triggerRefillGas());
-      gasCon.add(gasHit);
+      gasHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        drawMobileGasBtn(true);
+        this.tweens.add({
+          targets: gasBtnCon,
+          scale: 0.92,
+          duration: 50,
+          yoyo: true,
+          onComplete: () => {
+            drawMobileGasBtn(false);
+            this.triggerRefillGas();
+          },
+        });
+      });
+      gasBtnCon.add([gasBtnBg, this.gasRefillBtnLbl, mGasKey]);
+      gasCon.add([gasBtnCon, gasHit]);
 
-      // Cooking Oil Mini Box (`x: 52, y: 666`)
-      const oilCon = this.add.container(52, 666);
+      // Cooking Oil Mini Box (`x: 54, y: 673`, width: 74, height: 56)
+      const oilCon = this.add.container(54, 673);
       const oilPanel = this.add.graphics();
-      oilPanel.fillStyle(TASTE_THEME.colors.bgSurface, 1);
-      oilPanel.fillRoundedRect(-32, -26, 64, 52, 6);
-      oilPanel.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      oilPanel.strokeRoundedRect(-32, -26, 64, 52, 6);
+      oilPanel.fillStyle(0x0a0705, 0.35);
+      oilPanel.fillRoundedRect(-37, -26, 74, 56, 6);
+      oilPanel.fillStyle(0x18120e, 0.98);
+      oilPanel.fillRoundedRect(-37, -28, 74, 56, 6);
+      oilPanel.lineStyle(1, 0x3d2d1f, 1);
+      oilPanel.strokeRoundedRect(-37, -28, 74, 56, 6);
       oilCon.add(oilPanel);
+
+      const oilShadow = this.add.graphics();
+      oilShadow.fillStyle(0x0a0705, 0.4);
+      oilShadow.fillEllipse(-18, 12, 18, 5);
+      oilCon.add(oilShadow);
+
+      if (this.textures.exists('equip_oil_bottle')) {
+        const oilImg = this.add.image(-18, 0, 'equip_oil_bottle').setScale(0.088);
+        oilCon.add(oilImg);
+      }
 
       this.oilFillBar = this.add.graphics();
       oilCon.add(this.oilFillBar);
 
       this.oilPercentText = this.add
-        .text(0, -6, 'Dầu: 100%', {
+        .text(16, -14, 'Dầu: 100%', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontStyle: '800',
-          color: TASTE_THEME.colors.inkOnDark,
+          color: '#f7f1e8',
         })
         .setOrigin(0.5);
       oilCon.add(this.oilPercentText);
 
+      const oilBtnCon = this.add.container(16, 14);
+      const oilBtnBg = this.add.graphics();
+      const drawMobileOilBtn = (isDown: boolean) => {
+        oilBtnBg.clear();
+        oilBtnBg.fillStyle(0x78350f, 1);
+        oilBtnBg.fillRoundedRect(-17, 2, 34, 15, 3);
+        oilBtnBg.fillStyle(isDown ? 0x78350f : 0xb45309, 1);
+        oilBtnBg.fillRoundedRect(-17, isDown ? 1 : 0, 34, 15, 3);
+      };
+      drawMobileOilBtn(false);
+
       this.oilChangeBtnLbl = this.add
-        .text(0, 13, 'THAY DẦU', {
+        .text(-4, 7.5, 'THAY', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '8.5px',
+          fontSize: '7.5px',
           fontStyle: '800',
           color: '#ffffff',
-          backgroundColor: '#b45309',
-          padding: { left: 4, right: 4, top: 1, bottom: 1 },
         })
         .setOrigin(0.5);
-      oilCon.add(this.oilChangeBtnLbl);
+
+      const mOilKey = this.add
+        .text(11, 7.5, 'O', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '7px',
+          fontStyle: '800',
+          color: '#fed7aa',
+        })
+        .setOrigin(0.5);
 
       const oilHit = this.add
-        .rectangle(0, 0, 64, 52, 0xffffff, 0)
+        .rectangle(0, 0, 74, 56, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
-      oilHit.on('pointerdown', () => this.triggerChangeOil());
-      oilCon.add(oilHit);
+      oilHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        drawMobileOilBtn(true);
+        this.tweens.add({
+          targets: oilBtnCon,
+          scale: 0.92,
+          duration: 50,
+          yoyo: true,
+          onComplete: () => {
+            drawMobileOilBtn(false);
+            this.triggerChangeOil();
+          },
+        });
+      });
+      oilBtnCon.add([oilBtnBg, this.oilChangeBtnLbl, mOilKey]);
+      oilCon.add([oilBtnCon, oilHit]);
 
       this.refreshGasUI();
       this.refreshOilUI();
 
-      const slotW = 106;
+      const slotW = 100;
       const slotH = 56;
-      const slotStartX = 144;
+      const slotStartX = 146;
       const slotStartY = 609;
 
       for (let i = 0; i < 4; i++) {
@@ -1114,15 +1879,53 @@ export class ShopScene extends Phaser.Scene {
 
         const slotCon = this.add.container(sx, sy);
         const bg = this.add.graphics();
+
+        // Authentic stainless steel oil tray asset
+        const traySprite = this.add
+          .image(0, 0, 'equip_fryer_tray')
+          .setDisplaySize(slotW - 2, slotH - 2);
+
+        // Stamped slot pill badge on top-right rim
+        const slotBadgeBg = this.add.graphics();
+        slotBadgeBg.fillStyle(0x130e0a, 0.95);
+        slotBadgeBg.fillRoundedRect(slotW / 2 - 28, -slotH / 2 + 3, 26, 12, 2);
+        slotBadgeBg.lineStyle(1, 0x3d2d1f, 0.9);
+        slotBadgeBg.strokeRoundedRect(slotW / 2 - 28, -slotH / 2 + 3, 26, 12, 2);
+
+        const slotBadgeTxt = this.add
+          .text(slotW / 2 - 15, -slotH / 2 + 9, `RỔ ${i + 1}`, {
+            fontFamily: TASTE_THEME.fonts.mono,
+            fontSize: '7px',
+            fontStyle: '800',
+            color: '#a8937e',
+          })
+          .setOrigin(0.5);
+
+        // Dynamic oil surface tint overlay
+        const oilSurface = this.add.graphics();
+
+        // Animated boiling bubbles
+        const bubbleSprite = this.add
+          .sprite(-26, 2, 'fx_oil_bubble')
+          .setScale(0.36)
+          .setAlpha(0.85)
+          .setVisible(false);
+
+        // Splash burst
+        const splashSprite = this.add
+          .sprite(-26, 0, 'fx_oil_splash')
+          .setScale(0.45)
+          .setVisible(false);
+
         const bubbleEmitter = this.add.graphics();
         const foodIcon = this.add
-          .image(-30, 0, 'food_ca_vien_truyen_thong')
+          .image(-26, 0, 'food_ca_vien_truyen_thong')
           .setScale(0.15)
           .setVisible(false);
         const statusText = this.add
-          .text(10, -7, '', {
+          .text(12, -7, '', {
             fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '9.5px',
+            fontSize: '8.5px',
             fontStyle: '700',
             color: TASTE_THEME.colors.inkOnDark,
             align: 'center',
@@ -1136,14 +1939,33 @@ export class ShopScene extends Phaser.Scene {
 
         hit.on('pointerdown', () => this.onFryerSlotTapped(i));
 
-        slotCon.add([bg, bubbleEmitter, foodIcon, statusText, progressFill, hit]);
+        slotCon.add([
+          bg,
+          traySprite,
+          slotBadgeBg,
+          slotBadgeTxt,
+          oilSurface,
+          bubbleSprite,
+          foodIcon,
+          splashSprite,
+          statusText,
+          progressFill,
+          bubbleEmitter,
+          hit,
+        ]);
         this.fryerUIs.push({
           container: slotCon,
           bg,
+          traySprite,
+          oilSurface,
+          bubbleSprite,
+          splashSprite,
           foodIcon,
           statusText,
           progressFill,
           bubbleEmitter,
+          slotBadgeBg,
+          slotBadgeTxt,
           slotW,
           slotH,
           baseY: sy,
@@ -1152,9 +1974,9 @@ export class ShopScene extends Phaser.Scene {
       }
 
       this.primaryQuickBtnTxt = this.createStationQuickButton(
-        358,
+        356,
         609,
-        84,
+        86,
         56,
         '🌅 MỞ BÁN\nNGAY',
         TASTE_THEME.colors.success,
@@ -1162,9 +1984,9 @@ export class ShopScene extends Phaser.Scene {
       );
 
       this.secondaryQuickBtnTxt = this.createStationQuickButton(
-        358,
+        356,
         673,
-        84,
+        86,
         56,
         '📦 NHẬP ĐẦY\nKHO',
         TASTE_THEME.colors.accentPrimary,
@@ -1822,6 +2644,9 @@ export class ShopScene extends Phaser.Scene {
 
     const cookRes = this.cookingSystem.startCooking(foodDef.id);
     if (cookRes.ok) {
+      if (typeof cookRes.slotIndex === 'number') {
+        this.triggerOilSplashFX(cookRes.slotIndex);
+      }
       this.player.playCookingGesture();
       this.showToast(
         `🔥 Đang chiên ${foodDef.shortName} (+${foodDef.batchYield} phần)...`,
@@ -1885,6 +2710,7 @@ export class ShopScene extends Phaser.Scene {
     } else if (slot.status === 'empty') {
       const res = this.cookingSystem.startCooking(this.gs.selectedTrayFoodId, slotIndex);
       if (res.ok) {
+        this.triggerOilSplashFX(slotIndex);
         this.player.playCookingGesture();
         this.checkDayEndConditions();
       } else if (res.reason) {
@@ -1967,29 +2793,52 @@ export class ShopScene extends Phaser.Scene {
   private refreshGasUI(): void {
     const ratio = Phaser.Math.Clamp(this.gs.state.gas / this.gs.state.maxGas, 0, 1);
     this.gasFillBar.clear();
-    const barW = this.isDesktop ? 76 : 48;
-    const barY = this.isDesktop ? 28 : 10;
-    this.gasFillBar.fillStyle(TASTE_THEME.colors.bgBase, 1);
-    this.gasFillBar.fillRoundedRect(-barW / 2, barY, barW, 8, 4);
     const barColor =
       ratio > 0.4
         ? TASTE_THEME.colors.successLight
         : ratio > 0.2
           ? TASTE_THEME.colors.accentAmber
           : TASTE_THEME.colors.danger;
-    this.gasFillBar.fillStyle(barColor, 1);
-    this.gasFillBar.fillRoundedRect(-barW / 2, barY, Math.max(4, barW * ratio), 8, 4);
-    this.gasPercentText.setText(`Gas: ${Math.round(ratio * 100)}%`);
+
+    if (this.isDesktop) {
+      const barW = 78;
+      const barY = 22;
+      // Recessed industrial gauge trench
+      this.gasFillBar.fillStyle(0x0c0906, 0.95);
+      this.gasFillBar.fillRoundedRect(-barW / 2, barY, barW, 7, 3);
+      this.gasFillBar.lineStyle(1, 0x2e2319, 0.85);
+      this.gasFillBar.strokeRoundedRect(-barW / 2, barY, barW, 7, 3);
+      // Fill indicator
+      this.gasFillBar.fillStyle(barColor, 1);
+      this.gasFillBar.fillRoundedRect(-barW / 2 + 1, barY + 1, Math.max(3, (barW - 2) * ratio), 5, 2);
+      // Precision tick marks
+      this.gasFillBar.fillStyle(0x3e2f23, 0.7);
+      this.gasFillBar.fillRect(-barW / 2 + barW * 0.25, barY + 1, 1, 5);
+      this.gasFillBar.fillRect(-barW / 2 + barW * 0.5, barY + 1, 1, 5);
+      this.gasFillBar.fillRect(-barW / 2 + barW * 0.75, barY + 1, 1, 5);
+
+      const statusTag = ratio > 0.4 ? 'Đầy' : ratio > 0.2 ? 'Yếu' : 'Cạn!';
+      this.gasPercentText.setText(`Gas: ${Math.round(ratio * 100)}% (${statusTag})`);
+      this.gasPercentText.setColor(ratio > 0.4 ? '#86efac' : ratio > 0.2 ? '#fde047' : '#ef4444');
+    } else {
+      const barW = 34;
+      const barX = -1;
+      const barY = -3;
+      this.gasFillBar.fillStyle(0x0c0906, 0.95);
+      this.gasFillBar.fillRoundedRect(barX, barY, barW, 6, 2.5);
+      this.gasFillBar.lineStyle(1, 0x2e2319, 0.85);
+      this.gasFillBar.strokeRoundedRect(barX, barY, barW, 6, 2.5);
+      this.gasFillBar.fillStyle(barColor, 1);
+      this.gasFillBar.fillRoundedRect(barX + 1, barY + 1, Math.max(2, (barW - 2) * ratio), 4, 1.5);
+      this.gasPercentText.setText(`Gas: ${Math.round(ratio * 100)}%`);
+      this.gasPercentText.setColor(ratio > 0.4 ? '#86efac' : ratio > 0.2 ? '#fde047' : '#ef4444');
+    }
   }
 
   private refreshOilUI(): void {
     if (!this.oilFillBar || !this.oilPercentText) return;
     const ratio = Phaser.Math.Clamp(this.gs.state.oilQuality / 100, 0, 1);
     this.oilFillBar.clear();
-    const barW = this.isDesktop ? 76 : 48;
-    const barY = this.isDesktop ? -10 : -10;
-    this.oilFillBar.fillStyle(TASTE_THEME.colors.bgBase, 1);
-    this.oilFillBar.fillRoundedRect(-barW / 2, barY, barW, 7, 3);
 
     const status = this.gs.getOilStatus();
     const barColor =
@@ -1997,24 +2846,49 @@ export class ShopScene extends Phaser.Scene {
         ? 0xeab308 // Vàng óng
         : status === 'degraded'
           ? 0xb45309 // Nâu sẫm
-          : 0x1c1917; // Đen khét
-    this.oilFillBar.fillStyle(barColor, 1);
-    this.oilFillBar.fillRoundedRect(-barW / 2, barY, Math.max(4, barW * ratio), 7, 3);
+          : 0xef4444; // Đen khét
 
-    const statusLabel = status === 'fresh' ? 'Vàng' : status === 'degraded' ? 'Nâu' : 'Khét!';
-    this.oilPercentText.setText(`Dầu: ${Math.round(ratio * 100)}% (${statusLabel})`);
-    if (status === 'burned') {
-      this.oilPercentText.setColor('#ef4444');
-    } else if (status === 'degraded') {
-      this.oilPercentText.setColor('#f59e0b');
+    if (this.isDesktop) {
+      const barW = 78;
+      const barY = 22;
+      // Recessed industrial gauge trench
+      this.oilFillBar.fillStyle(0x0c0906, 0.95);
+      this.oilFillBar.fillRoundedRect(-barW / 2, barY, barW, 7, 3);
+      this.oilFillBar.lineStyle(1, 0x2e2319, 0.85);
+      this.oilFillBar.strokeRoundedRect(-barW / 2, barY, barW, 7, 3);
+      // Fill indicator
+      this.oilFillBar.fillStyle(barColor, 1);
+      this.oilFillBar.fillRoundedRect(-barW / 2 + 1, barY + 1, Math.max(3, (barW - 2) * ratio), 5, 2);
+      // Milestone tick marks: 25% (burned) and 60% (degraded)
+      this.oilFillBar.fillStyle(0x3e2f23, 0.7);
+      this.oilFillBar.fillRect(-barW / 2 + barW * 0.25, barY + 1, 1, 5);
+      this.oilFillBar.fillRect(-barW / 2 + barW * 0.6, barY + 1, 1, 5);
+
+      const statusLabel = status === 'fresh' ? 'Vàng óng' : status === 'degraded' ? 'Nâu sẫm' : 'Khét!';
+      this.oilPercentText.setText(`Dầu: ${Math.round(ratio * 100)}% (${statusLabel})`);
+      this.oilPercentText.setColor(status === 'fresh' ? '#fde047' : status === 'degraded' ? '#fb923c' : '#ef4444');
     } else {
-      this.oilPercentText.setColor(TASTE_THEME.colors.inkOnDark);
+      const barW = 34;
+      const barX = -1;
+      const barY = -3;
+      this.oilFillBar.fillStyle(0x0c0906, 0.95);
+      this.oilFillBar.fillRoundedRect(barX, barY, barW, 6, 2.5);
+      this.oilFillBar.lineStyle(1, 0x2e2319, 0.85);
+      this.oilFillBar.strokeRoundedRect(barX, barY, barW, 6, 2.5);
+      this.oilFillBar.fillStyle(barColor, 1);
+      this.oilFillBar.fillRoundedRect(barX + 1, barY + 1, Math.max(2, (barW - 2) * ratio), 4, 1.5);
+      this.oilPercentText.setText(`Dầu: ${Math.round(ratio * 100)}%`);
+      this.oilPercentText.setColor(status === 'fresh' ? '#fde047' : status === 'degraded' ? '#fb923c' : '#ef4444');
     }
   }
 
   private refreshVeggieUI(): void {
     if (!this.veggieStockText) return;
-    this.veggieStockText.setText(`Kho: ${this.gs.state.veggieStock}/40 phần`);
+    this.veggieStockText.setText(
+      this.isDesktop
+        ? `Kho: ${this.gs.state.veggieStock}/40 phần`
+        : `Kho: ${this.gs.state.veggieStock}/40`
+    );
     this.veggieStockText.setColor(this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0');
   }
 
@@ -2072,6 +2946,28 @@ export class ShopScene extends Phaser.Scene {
     }
   }
 
+  private triggerOilSplashFX(slotIndex: number): void {
+    const ui = this.fryerUIs[slotIndex];
+    if (!ui || !ui.splashSprite) return;
+    ui.splashSprite.setPosition(ui.foodIcon.x, ui.foodIcon.y);
+    ui.splashSprite.setVisible(true);
+    ui.splashSprite.play('anim_oil_splash');
+    ui.splashSprite.once('animationcomplete', () => {
+      ui.splashSprite.setVisible(false);
+    });
+
+    // Realistic oil tray tactile squash bounce
+    this.tweens.add({
+      targets: ui.traySprite,
+      scaleY: ui.traySprite.scaleY * 0.94,
+      duration: 60,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+
+    SoundManager.playPop();
+  }
+
   private refreshFryerSlotUI(slotIndex: number): void {
     const ui = this.fryerUIs[slotIndex];
     if (!ui) return;
@@ -2089,55 +2985,105 @@ export class ShopScene extends Phaser.Scene {
       ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
       ui.bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
       ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.traySprite.setVisible(false);
+      ui.oilSurface.clear();
+      ui.bubbleSprite.setVisible(false);
       ui.foodIcon.setVisible(false);
       ui.bubbleEmitter.clear();
+      if (ui.slotBadgeBg) ui.slotBadgeBg.setVisible(false);
+      if (ui.slotBadgeTxt) ui.slotBadgeTxt.setVisible(false);
       ui.statusText.setPosition(0, 0);
       ui.statusText.setText('🔒 Mở ở Nâng Cấp');
       ui.statusText.setColor(TASTE_THEME.colors.inkMutedOnDark);
       return;
     }
 
+    // Unlocked slot shows the authentic stainless steel oil tray asset and stamped rim badge
+    ui.traySprite.setVisible(true).clearTint();
+    if (ui.slotBadgeBg) ui.slotBadgeBg.setVisible(true);
+    if (ui.slotBadgeTxt) ui.slotBadgeTxt.setVisible(true);
+
+    // Calculate inner oil basin pool geometry
+    const poolW = Math.round(w * (this.isDesktop ? 0.76 : 0.74));
+    const poolH = Math.round(h * (this.isDesktop ? 0.62 : 0.6));
+    const poolX = -Math.round(poolW / 2);
+    const poolY = -Math.round(poolH / 2) + 2;
+
+    // Dynamic oil status and color tint
+    const oilStatus = this.gs.getOilStatus();
+    const oilColor =
+      oilStatus === 'fresh' ? 0xf59e0b : oilStatus === 'degraded' ? 0x92400e : 0x1c1917;
+    const oilAlpha =
+      oilStatus === 'fresh' ? 0.28 : oilStatus === 'degraded' ? 0.45 : 0.68;
+
+    ui.oilSurface.clear();
+    ui.oilSurface.fillStyle(oilColor, oilAlpha);
+    ui.oilSurface.fillRoundedRect(poolX, poolY, poolW, poolH, 6);
+
+    // Subtle dark outer bevel behind the tray
+    ui.bg.fillStyle(0x0f0b08, 0.45);
+    ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 8);
+
+    const txtX = this.isDesktop ? 22 : 12;
+
     if (slot.status === 'empty') {
-      ui.bg.fillStyle(TASTE_THEME.colors.steelDark, 0.9);
-      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
-      // Warm golden oil well inside the stainless fryer basket
-      ui.bg.fillStyle(0xb45309, 0.28);
-      ui.bg.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10, 7);
-      ui.bg.lineStyle(1, TASTE_THEME.colors.steelMid, 0.65);
-      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.lineStyle(1, 0x4a382b, 0.7);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+
       ui.foodIcon.setVisible(false).clearTint();
+      ui.bubbleSprite.setVisible(false);
       ui.bubbleEmitter.clear();
-      ui.statusText.setPosition(0, 0);
-      ui.statusText.setText(`Rổ #${slotIndex + 1} Trống\nChạm để chiên`);
-      ui.statusText.setColor(TASTE_THEME.colors.inkOnDark);
+      ui.statusText.setPosition(txtX, 0);
+      ui.statusText.setText(
+        this.isDesktop
+          ? `Khay #${slotIndex + 1} Sẵn Sàng\nChạm món để chiên`
+          : `Rổ #${slotIndex + 1}\nChạm để chiên`
+      );
+      ui.statusText.setColor(TASTE_THEME.colors.inkMutedOnDark);
     } else if (slot.status === 'cooking' && slot.foodId) {
       const def = this.gs.getFoodDef(slot.foodId);
       const ratio = Phaser.Math.Clamp(slot.elapsedMs / slot.durationMs, 0, 1);
       const remainSec = ((slot.durationMs - slot.elapsedMs) / 1000).toFixed(1);
 
-      ui.bg.fillStyle(0x78350f, 1);
-      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
-      ui.bg.fillStyle(TASTE_THEME.colors.accentAmber, 0.45);
-      ui.bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 7);
+      // Active boiling golden border highlight
       ui.bg.lineStyle(2, TASTE_THEME.colors.accentGold, 1);
-      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
+
+      // Boiling shimmer on oil surface
+      ui.oilSurface.lineStyle(1.5, 0xfef08a, 0.65);
+      ui.oilSurface.strokeRoundedRect(poolX + 2, poolY + 2, poolW - 4, poolH - 4, 5);
+
+      // Active boiling FX animation from agent-sprite-forge
+      ui.bubbleSprite.setVisible(true);
+      if (!ui.bubbleSprite.anims.isPlaying) {
+        ui.bubbleSprite.play('anim_oil_bubble');
+      }
 
       ui.foodIcon.setTexture(def.textureKey).setVisible(true).clearTint();
-      ui.statusText.setPosition(16, -11);
-      ui.statusText.setText(`${def.shortName}\n🔥 Đang chiên: ${remainSec}s`);
+      ui.statusText.setPosition(txtX, this.isDesktop ? -12 : -8);
+      ui.statusText.setText(
+        this.isDesktop
+          ? `${def.shortName}\n🔥 Đang chiên: ${remainSec}s`
+          : `${def.shortName}\n🔥 ${remainSec}s`
+      );
       ui.statusText.setColor('#ffffff');
 
-      const pBarW = this.isDesktop ? 98 : 62;
-      const pBarH = this.isDesktop ? 8 : 6;
-      const pBarX = -16;
-      const pBarY = this.isDesktop ? 24 : 13;
-      ui.progressFill.fillStyle(TASTE_THEME.colors.bgBase, 0.9);
-      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 4);
+      const pBarW = this.isDesktop ? 78 : 46;
+      const pBarH = this.isDesktop ? 7 : 5;
+      const pBarX = this.isDesktop ? -17 : -10;
+      const pBarY = this.isDesktop ? 22 : 14;
+
+      // Recessed progress trough
+      ui.progressFill.fillStyle(0x0c0906, 0.9);
+      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 3);
+      ui.progressFill.lineStyle(1, 0x2e2319, 0.8);
+      ui.progressFill.strokeRoundedRect(pBarX, pBarY, pBarW, pBarH, 3);
+      // Progress fill
       ui.progressFill.fillStyle(TASTE_THEME.colors.accentGold, 1);
-      ui.progressFill.fillRoundedRect(pBarX, pBarY, Math.max(4, pBarW * ratio), pBarH, 4);
-      // Golden readiness milestone tick mark at right end
+      ui.progressFill.fillRoundedRect(pBarX + 1, pBarY + 1, Math.max(3, (pBarW - 2) * ratio), pBarH - 2, 2);
+      // Finish mark needle
       ui.progressFill.fillStyle(TASTE_THEME.colors.successLight, 1);
-      ui.progressFill.fillRect(pBarX + pBarW - 3, pBarY - 2, 2.5, pBarH + 4);
+      ui.progressFill.fillRect(pBarX + pBarW - 2.5, pBarY - 1, 2, pBarH + 2);
     } else if (slot.status === 'ready' && slot.foodId) {
       const def = this.gs.getFoodDef(slot.foodId);
       const burnRatio = Phaser.Math.Clamp(slot.burnElapsedMs / Math.max(1, slot.burnLimitMs), 0, 1);
@@ -2148,25 +3094,26 @@ export class ShopScene extends Phaser.Scene {
       ).toFixed(1);
 
       const isUrgent = burnRatio >= 0.65;
-      const cardColor = isUrgent ? 0x9a3412 : TASTE_THEME.colors.success;
-      const borderColor = isUrgent ? TASTE_THEME.colors.danger : 0xffffff;
+      const borderColor = isUrgent ? TASTE_THEME.colors.danger : 0x22c55e;
 
-      ui.bg.fillStyle(cardColor, 1);
-      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
       ui.bg.lineStyle(2, borderColor, 0.95);
-      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
 
+      ui.bubbleSprite.setVisible(false);
       ui.foodIcon.setTexture(def.textureKey).setVisible(true).clearTint();
       ui.bubbleEmitter.clear();
-      ui.statusText.setPosition(16, -11);
-      ui.statusText.setText(`${def.shortName}\n✓ VỚT NGAY (${remainBurnSec}s)`);
-      ui.statusText.setColor('#ffffff');
+      ui.statusText.setPosition(txtX, this.isDesktop ? -12 : -8);
+      ui.statusText.setText(
+        this.isDesktop
+          ? `${def.shortName}\n⚡ VỚT NGAY (${remainBurnSec}s)`
+          : `${def.shortName}\n⚡ ${remainBurnSec}s`
+      );
+      ui.statusText.setColor(isUrgent ? '#fca5a5' : '#86efac');
 
-      // Burn Countdown Bar (Green -> Amber -> Danger Red as burnRatio increases)
-      const pBarW = this.isDesktop ? 98 : 62;
-      const pBarH = this.isDesktop ? 8 : 6;
-      const pBarX = -16;
-      const pBarY = this.isDesktop ? 24 : 13;
+      const pBarW = this.isDesktop ? 78 : 46;
+      const pBarH = this.isDesktop ? 7 : 5;
+      const pBarX = this.isDesktop ? -17 : -10;
+      const pBarY = this.isDesktop ? 22 : 14;
       const barColor =
         burnRatio < 0.45
           ? TASTE_THEME.colors.successLight
@@ -2174,29 +3121,30 @@ export class ShopScene extends Phaser.Scene {
             ? TASTE_THEME.colors.accentAmber
             : TASTE_THEME.colors.danger;
 
-      ui.progressFill.fillStyle(TASTE_THEME.colors.bgBase, 0.9);
-      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 4);
+      ui.progressFill.fillStyle(0x0c0906, 0.9);
+      ui.progressFill.fillRoundedRect(pBarX, pBarY, pBarW, pBarH, 3);
+      ui.progressFill.lineStyle(1, 0x2e2319, 0.8);
+      ui.progressFill.strokeRoundedRect(pBarX, pBarY, pBarW, pBarH, 3);
       ui.progressFill.fillStyle(barColor, 1);
       ui.progressFill.fillRoundedRect(
-        pBarX,
-        pBarY,
-        Math.max(4, pBarW * remainBurnRatio),
-        pBarH,
-        4
+        pBarX + 1,
+        pBarY + 1,
+        Math.max(3, (pBarW - 2) * remainBurnRatio),
+        pBarH - 2,
+        2
       );
     } else if (slot.status === 'burned' && slot.foodId) {
       const def = this.gs.getFoodDef(slot.foodId);
-      ui.bg.fillStyle(0x2b1111, 1);
-      ui.bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
-      ui.bg.fillStyle(TASTE_THEME.colors.danger, 0.22);
-      ui.bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 7);
       ui.bg.lineStyle(2, TASTE_THEME.colors.danger, 1);
-      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+      ui.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 8);
 
+      ui.bubbleSprite.setVisible(false);
       ui.foodIcon.setTexture(def.textureKey).setVisible(true).setTint(0x3a2e2b);
-      ui.statusText.setPosition(16, 0);
-      ui.statusText.setText(`💀 CHÁY KHÉT!\nChạm để đổ bỏ`);
-      ui.statusText.setColor('#fecaca');
+      ui.statusText.setPosition(txtX, 0);
+      ui.statusText.setText(
+        this.isDesktop ? `💀 CHÁY KHÉT!\nChạm để đổ bỏ` : `💀 KHÉT!\nĐổ bỏ`
+      );
+      ui.statusText.setColor('#fca5a5');
     }
   }
 
@@ -2444,6 +3392,11 @@ export class ShopScene extends Phaser.Scene {
           const bx = -44 + b * 8 + Math.sin(this.bubblePhase + b) * 3;
           const by = 8 - ((this.bubblePhase * 6 + b * 5) % 20);
           ui.bubbleEmitter.fillCircle(bx, by, 2.5);
+        }
+        // Realistic simmering bob in boiling oil
+        ui.foodIcon.y = Math.sin(this.bubblePhase * 2.5 + i) * 1.5;
+        if (ui.bubbleSprite && !ui.bubbleSprite.visible) {
+          ui.bubbleSprite.setVisible(true).play('anim_oil_bubble');
         }
       } else if (slot.status === 'burned') {
         ui.bubbleEmitter.clear();

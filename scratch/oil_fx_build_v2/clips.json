@@ -1,0 +1,120 @@
+{
+  "schema": "generate2dsprite.animation_clips.v2",
+  "frames": [
+    {
+      "name": "oil_splash-00",
+      "file": "frames/oil_splash-00.png"
+    },
+    {
+      "name": "oil_splash-01",
+      "file": "frames/oil_splash-01.png"
+    },
+    {
+      "name": "oil_splash-02",
+      "file": "frames/oil_splash-02.png"
+    },
+    {
+      "name": "oil_splash-03",
+      "file": "frames/oil_splash-03.png"
+    },
+    {
+      "name": "oil_splash-04",
+      "file": "frames/oil_splash-04.png"
+    },
+    {
+      "name": "oil_splash-05",
+      "file": "frames/oil_splash-05.png"
+    },
+    {
+      "name": "oil_splash-06",
+      "file": "frames/oil_splash-06.png"
+    },
+    {
+      "name": "oil_bubble-00",
+      "file": "frames/oil_bubble-00.png"
+    },
+    {
+      "name": "oil_bubble-01",
+      "file": "frames/oil_bubble-01.png"
+    },
+    {
+      "name": "oil_bubble-02",
+      "file": "frames/oil_bubble-02.png"
+    },
+    {
+      "name": "oil_bubble-03",
+      "file": "frames/oil_bubble-03.png"
+    },
+    {
+      "name": "oil_bubble-04",
+      "file": "frames/oil_bubble-04.png"
+    },
+    {
+      "name": "oil_bubble-05",
+      "file": "frames/oil_bubble-05.png"
+    }
+  ],
+  "anchor_px": [
+    64.0,
+    72.0
+  ],
+  "clips": {
+    "oil_splash": {
+      "frames": [
+        "oil_splash-00",
+        "oil_splash-01",
+        "oil_splash-02",
+        "oil_splash-03",
+        "oil_splash-04",
+        "oil_splash-05",
+        "oil_splash-06"
+      ],
+      "duration_ms": [
+        35,
+        53,
+        52,
+        53,
+        52,
+        53,
+        52
+      ],
+      "loop": false,
+      "loop_policy": "oneshot",
+      "role": "fx",
+      "events": [
+        {
+          "at": 1,
+          "name": "hit",
+          "data": {
+            "impactMs": 35
+          }
+        }
+      ]
+    },
+    "oil_bubble": {
+      "frames": [
+        "oil_bubble-00",
+        "oil_bubble-01",
+        "oil_bubble-02",
+        "oil_bubble-03",
+        "oil_bubble-04",
+        "oil_bubble-05"
+      ],
+      "duration_ms": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "loop": true,
+      "loop_policy": "cycle",
+      "role": "fx"
+    }
+  },
+  "sampling": "linear",
+  "pixel_art": false,
+  "art_source": "code",
+  "placeholder": false
+}

@@ -1,0 +1,103 @@
+{
+  "schema": "codeart2d.fx.v1",
+  "canvas": [64, 64],
+  "origin": [32, 36],
+  "palette": {
+    "white": "#ffffff",
+    "hot_gold": "#fef08a",
+    "amber": "#f59e0b",
+    "oil_deep": "#b45309",
+    "steam_light": "#f3f4f6",
+    "steam_mid": "#e5e7eb",
+    "steam_fade": "#9ca3af"
+  },
+  "effects": [
+    {
+      "id": "oil_splash",
+      "durationMs": 350,
+      "impactMs": 35,
+      "seed": 14,
+      "ramps": {
+        "sizzle": ["white", "hot_gold", "amber", "oil_deep"],
+        "steam": ["steam_light", "steam_mid", "steam_fade"]
+      },
+      "primitives": [
+        {
+          "type": "ring",
+          "ramp": "sizzle",
+          "origin": [32, 38],
+          "radius": [4, 22],
+          "width": [5, 1],
+          "squash": 0.45,
+          "lifeMs": 340
+        },
+        {
+          "type": "flash",
+          "ramp": "sizzle",
+          "origin": [32, 36],
+          "radius": 4,
+          "rays": 4,
+          "rayLength": 10,
+          "rotation": 25,
+          "lifeMs": 100
+        },
+        {
+          "type": "sparks",
+          "ramp": "sizzle",
+          "origin": [32, 36],
+          "count": 14,
+          "angle": -90,
+          "spread": 120,
+          "speed": 65,
+          "lifeMs": 280,
+          "length": 5,
+          "gravity": 95
+        },
+        {
+          "type": "dust",
+          "ramp": "steam",
+          "origin": [32, 36],
+          "count": 6,
+          "spread": 18,
+          "rise": 16,
+          "drift": 4,
+          "radius": [2, 5],
+          "lifeMs": 350
+        }
+      ]
+    },
+    {
+      "id": "oil_bubble",
+      "durationMs": 300,
+      "impactMs": 0,
+      "seed": 27,
+      "loop": true,
+      "ramps": {
+        "bubble": ["white", "hot_gold", "amber"]
+      },
+      "primitives": [
+        {
+          "type": "ring",
+          "ramp": "bubble",
+          "origin": [32, 38],
+          "radius": [2, 16],
+          "width": [3, 1],
+          "squash": 0.45,
+          "lifeMs": 300
+        },
+        {
+          "type": "sparks",
+          "ramp": "bubble",
+          "origin": [32, 36],
+          "count": 10,
+          "angle": -90,
+          "spread": 140,
+          "speed": 42,
+          "lifeMs": 300,
+          "length": 3,
+          "gravity": 50
+        }
+      ]
+    }
+  ]
+}

@@ -133,13 +133,25 @@ export class FoodTray extends Phaser.GameObjects.Container {
     this.cookProgressBar = this.scene.add.graphics();
     this.add(this.cookProgressBar);
 
-    // Locked overlay container (`cards.md` clean dark glass state)
+    // Locked overlay container (authentic locked stainless slot with dark interior)
     this.lockOverlay = this.scene.add.container(0, 0);
     const lockBg = this.scene.add.graphics();
-    lockBg.fillStyle(TASTE_THEME.colors.cardLocked, 0.92);
-    lockBg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+    // Drop shadow
+    lockBg.fillStyle(0x060403, 0.4);
+    lockBg.fillRoundedRect(-w / 2 + 1, -h / 2 + 2, w - 2, h, 8);
+    // Dark brushed pan cavity
+    lockBg.fillStyle(TASTE_THEME.colors.cardLocked, 0.95);
+    lockBg.fillRoundedRect(-w / 2, -h / 2, w, h, 7);
+    // Wire mesh pattern for locked empty tray
+    lockBg.lineStyle(1, 0x2e2319, 0.45);
+    const lMeshTop = -h / 2 + (isCompact ? 10 : 14);
+    const lMeshBottom = h / 2 - (isCompact ? 10 : 14);
+    for (let gy = lMeshTop; gy <= lMeshBottom; gy += isCompact ? 6 : 8) {
+      lockBg.lineBetween(-w / 2 + 8, gy, w / 2 - 8, gy);
+    }
+    // Rim hairline
     lockBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-    lockBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+    lockBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 7);
 
     const lockTitle = this.scene.add
       .text(0, -10, `🔒 Mở ở Cấp ${this.foodDef.unlockLevel}`, {
@@ -321,27 +333,85 @@ export class FoodTray extends Phaser.GameObjects.Container {
     this.nameText.setVisible(true);
 
     const hasCooked = stock.cookedStock > 0;
+    const isCompact = h < 92;
 
-    // Single clean card surface (`cards.md` — no 3-level nested boxes)
-    const surfaceColor = this.isHovered
-      ? TASTE_THEME.colors.cardCreamHover
-      : hasCooked
-        ? TASTE_THEME.colors.cardCream
-        : TASTE_THEME.colors.cardWarmAlt;
+    // 1. Soft Drop Shadow underneath the tray onto the shelf
+    this.trayBg.fillStyle(0x060403, 0.42);
+    this.trayBg.fillRoundedRect(-w / 2 + 1, -h / 2 + 2, w - 2, h, 8);
 
-    this.trayBg.fillStyle(surfaceColor, 1);
-    this.trayBg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+    // 2. Outer Stainless Steel Flange / Metallic Rim (Inox 304)
+    const rimColor = this.isHovered ? 0x4a4036 : 0x3b332b;
+    this.trayBg.fillStyle(rimColor, 1);
+    this.trayBg.fillRoundedRect(-w / 2, -h / 2, w, h, 7);
 
-    // Subtle footer strip for the food name
-    this.trayBg.fillStyle(TASTE_THEME.colors.cardMuted, 0.55);
-    this.trayBg.fillRoundedRect(-w / 2 + 2, h / 2 - 22, w - 4, 20, {
+    // Brushed metallic top-edge highlight & bottom bevel shadow
+    this.trayBg.lineStyle(1, 0xccd6e0, 0.55);
+    this.trayBg.lineBetween(-w / 2 + 3, -h / 2 + 1, w / 2 - 3, -h / 2 + 1);
+    this.trayBg.lineStyle(1, 0x1d1712, 0.75);
+    this.trayBg.lineBetween(-w / 2 + 3, h / 2 - 1, w / 2 - 3, h / 2 - 1);
+
+    // 3. Recessed Basin (Lòng khay trũng)
+    const basinInset = 2.5;
+    const basinX = -w / 2 + basinInset;
+    const basinY = -h / 2 + basinInset;
+    const basinW = w - basinInset * 2;
+    const basinH = h - basinInset * 2;
+    const basinR = 5;
+
+    // Inner rim depth bevel shadow
+    this.trayBg.fillStyle(0x1a130e, 0.45);
+    this.trayBg.fillRoundedRect(basinX, basinY, basinW, basinH, basinR);
+
+    // Food-grade tray bed surface
+    const bedColor = hasCooked
+      ? (this.isHovered ? 0xfffcf5 : 0xfcf6ed)
+      : (this.isHovered ? 0xf0e8dc : 0xe9e1d2);
+    this.trayBg.fillStyle(bedColor, 1);
+    this.trayBg.fillRoundedRect(basinX + 0.5, basinY + 0.5, basinW - 1, basinH - 1, basinR);
+
+    // 4. Warm Golden Underglow when hot cooked snacks are resting on tray
+    if (hasCooked) {
+      this.trayBg.fillStyle(0xf59e0b, 0.12);
+      this.trayBg.fillEllipse(0, isCompact ? -4 : -6, basinW * 0.72, basinH * 0.52);
+      this.trayBg.fillStyle(0xd97706, 0.05);
+      this.trayBg.fillEllipse(0, isCompact ? -4 : -6, basinW * 0.45, basinH * 0.35);
+    }
+
+    // 5. Stainless Steel Wire Mesh Oil-Drip Rack (Vỉ lưới Inox ráo dầu)
+    const meshTop = -h / 2 + (isCompact ? 13 : 16);
+    const meshBottom = h / 2 - (isCompact ? 17 : 22);
+    const meshLeft = -w / 2 + (isCompact ? 8 : 10);
+    const meshRight = w / 2 - (isCompact ? 8 : 10);
+    const wireStepY = isCompact ? 6 : 7.5;
+
+    // Horizontal wire grid
+    this.trayBg.lineStyle(1, hasCooked ? 0xd0c1ad : 0xbfaea0, hasCooked ? 0.45 : 0.35);
+    for (let gy = meshTop; gy <= meshBottom; gy += wireStepY) {
+      this.trayBg.lineBetween(meshLeft, gy, meshRight, gy);
+    }
+
+    // Vertical support rods
+    const vRodCount = isCompact ? 3 : 5;
+    for (let i = 0; i < vRodCount; i++) {
+      const rx = meshLeft + ((meshRight - meshLeft) / (vRodCount - 1)) * i;
+      this.trayBg.lineBetween(rx, meshTop, rx, meshBottom);
+    }
+
+    // 6. Footer Label Plate Strip (Thanh nẹp tên & giá món)
+    const footerH = isCompact ? 16 : 20;
+    const footerY = h / 2 - footerH - basinInset;
+    this.trayBg.fillStyle(0xeadecc, 0.72);
+    this.trayBg.fillRoundedRect(basinX, footerY, basinW, footerH, {
       tl: 0,
       tr: 0,
-      bl: 9,
-      br: 9,
+      bl: basinR,
+      br: basinR,
     });
+    // Divider hairline on top of footer strip
+    this.trayBg.lineStyle(1, 0xcdba9e, 0.8);
+    this.trayBg.lineBetween(basinX + 1, footerY, basinX + basinW - 1, footerY);
 
-    // State-aware border (1px hairline normal, 2px semantic focus when needed or frying)
+    // 7. State-aware Rim Border
     if (this.cookingProgressStatus === 'burned') {
       this.trayBg.lineStyle(2, TASTE_THEME.colors.danger, 1);
     } else if (this.cookingProgressStatus === 'ready') {
@@ -353,11 +423,11 @@ export class FoodTray extends Phaser.GameObjects.Container {
     } else if (this.isHovered) {
       this.trayBg.lineStyle(1.5, TASTE_THEME.colors.accentPrimary, 0.9);
     } else if (hasCooked) {
-      this.trayBg.lineStyle(1, TASTE_THEME.colors.borderHairlineLight, 1);
+      this.trayBg.lineStyle(1.2, 0xb8a894, 0.9);
     } else {
-      this.trayBg.lineStyle(1, 0xcabaa6, 1);
+      this.trayBg.lineStyle(1, 0x8a7966, 0.85);
     }
-    this.trayBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+    this.trayBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 7);
 
     // Food sprite visibility
     this.foodSprite.setAlpha(hasCooked ? 1.0 : 0.38);

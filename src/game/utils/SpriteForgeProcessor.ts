@@ -50,11 +50,17 @@ export class SpriteForgeProcessor {
     const rs: number[] = [];
     const gs: number[] = [];
     const bs: number[] = [];
+    let transparentBorders = 0;
+    let checkedBorders = 0;
 
     const pushPixel = (x: number, y: number) => {
       const idx = (y * w + x) * 4;
       const a = data[idx + 3];
-      if (a < 16) return;
+      checkedBorders++;
+      if (a < 16) {
+        transparentBorders++;
+        return;
+      }
       const r = data[idx];
       const g = data[idx + 1];
       const b = data[idx + 2];
@@ -83,6 +89,13 @@ export class SpriteForgeProcessor {
         pushPixel(2, y);
         pushPixel(w - 3, y);
       }
+    }
+
+    // If border is already predominantly transparent (>35%), the texture has no solid background key.
+    // Prevent sampling foreground parts touching the frame boundary as a background key!
+    if (checkedBorders > 0 && transparentBorders / checkedBorders > 0.35) {
+      const fallback = { r: 251, g: 245, b: 229 };
+      return { primaryKey: fallback, samples: [fallback] };
     }
 
     if (rs.length === 0) {

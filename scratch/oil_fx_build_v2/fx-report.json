@@ -1,0 +1,547 @@
+{
+  "schema": "codeart2d.fx_report.v1",
+  "route": "vector",
+  "canvas": [
+    128,
+    128
+  ],
+  "origin": [
+    64.0,
+    72.0
+  ],
+  "zoom": 2,
+  "palette": [
+    "#9ca3af",
+    "#b45309",
+    "#e5e7eb",
+    "#f3f4f6",
+    "#f59e0b",
+    "#fef08a",
+    "#ffffff"
+  ],
+  "effects": {
+    "oil_splash": {
+      "durationMs": 350,
+      "impactMs": 35,
+      "loop": false,
+      "frames": [
+        {
+          "id": "oil_splash-00",
+          "start_ms": 0,
+          "duration_ms": 35,
+          "sample_ms": 17.5,
+          "qa": {
+            "visible": 159,
+            "partial_alpha": 60,
+            "colors": 20,
+            "off_palette": null,
+            "orphans": 53,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              51,
+              63,
+              80,
+              76
+            ]
+          },
+          "margin_px": 48,
+          "file": "frames/oil_splash-00.png"
+        },
+        {
+          "id": "oil_splash-01",
+          "start_ms": 35,
+          "duration_ms": 53,
+          "sample_ms": 61.5,
+          "qa": {
+            "visible": 947,
+            "partial_alpha": 209,
+            "colors": 128,
+            "off_palette": null,
+            "orphans": 258,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              43,
+              53,
+              85,
+              88
+            ]
+          },
+          "margin_px": 40,
+          "file": "frames/oil_splash-01.png"
+        },
+        {
+          "id": "oil_splash-02",
+          "start_ms": 88,
+          "duration_ms": 52,
+          "sample_ms": 114.0,
+          "qa": {
+            "visible": 1461,
+            "partial_alpha": 380,
+            "colors": 155,
+            "off_palette": null,
+            "orphans": 382,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              32,
+              44,
+              96,
+              91
+            ]
+          },
+          "margin_px": 32,
+          "file": "frames/oil_splash-02.png"
+        },
+        {
+          "id": "oil_splash-03",
+          "start_ms": 140,
+          "duration_ms": 53,
+          "sample_ms": 166.5,
+          "qa": {
+            "visible": 1699,
+            "partial_alpha": 421,
+            "colors": 143,
+            "off_palette": null,
+            "orphans": 410,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              24,
+              38,
+              104,
+              94
+            ]
+          },
+          "margin_px": 24,
+          "file": "frames/oil_splash-03.png"
+        },
+        {
+          "id": "oil_splash-04",
+          "start_ms": 193,
+          "duration_ms": 52,
+          "sample_ms": 219.0,
+          "qa": {
+            "visible": 1821,
+            "partial_alpha": 490,
+            "colors": 159,
+            "off_palette": null,
+            "orphans": 481,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              20,
+              35,
+              108,
+              96
+            ]
+          },
+          "margin_px": 20,
+          "file": "frames/oil_splash-04.png"
+        },
+        {
+          "id": "oil_splash-05",
+          "start_ms": 245,
+          "duration_ms": 53,
+          "sample_ms": 271.5,
+          "qa": {
+            "visible": 1736,
+            "partial_alpha": 511,
+            "colors": 109,
+            "off_palette": null,
+            "orphans": 456,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              18,
+              33,
+              110,
+              97
+            ]
+          },
+          "margin_px": 18,
+          "file": "frames/oil_splash-05.png"
+        },
+        {
+          "id": "oil_splash-06",
+          "start_ms": 298,
+          "duration_ms": 52,
+          "sample_ms": 324.0,
+          "qa": {
+            "visible": 1374,
+            "partial_alpha": 479,
+            "colors": 68,
+            "off_palette": null,
+            "orphans": 426,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              18,
+              34,
+              110,
+              97
+            ]
+          },
+          "margin_px": 18,
+          "file": "frames/oil_splash-06.png"
+        }
+      ],
+      "duration_ms": [
+        35,
+        53,
+        52,
+        53,
+        52,
+        53,
+        52
+      ],
+      "hit_frame": 1,
+      "dropped_tail_frames": 0,
+      "events": [
+        {
+          "at": 1,
+          "name": "hit",
+          "data": {
+            "impactMs": 35
+          }
+        }
+      ],
+      "seam": null,
+      "hit_on_60hz_tick": false
+    },
+    "oil_bubble": {
+      "durationMs": 300,
+      "impactMs": 0,
+      "loop": true,
+      "frames": [
+        {
+          "id": "oil_bubble-00",
+          "start_ms": 0,
+          "duration_ms": 50,
+          "sample_ms": 25.0,
+          "qa": {
+            "visible": 258,
+            "partial_alpha": 102,
+            "colors": 37,
+            "off_palette": null,
+            "orphans": 84,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              50,
+              67,
+              78,
+              82
+            ]
+          },
+          "margin_px": 46,
+          "file": "frames/oil_bubble-00.png"
+        },
+        {
+          "id": "oil_bubble-01",
+          "start_ms": 50,
+          "duration_ms": 50,
+          "sample_ms": 75.0,
+          "qa": {
+            "visible": 467,
+            "partial_alpha": 206,
+            "colors": 68,
+            "off_palette": null,
+            "orphans": 214,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              41,
+              62,
+              87,
+              87
+            ]
+          },
+          "margin_px": 41,
+          "file": "frames/oil_bubble-01.png"
+        },
+        {
+          "id": "oil_bubble-02",
+          "start_ms": 100,
+          "duration_ms": 50,
+          "sample_ms": 125.0,
+          "qa": {
+            "visible": 545,
+            "partial_alpha": 291,
+            "colors": 58,
+            "off_palette": null,
+            "orphans": 266,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              35,
+              60,
+              93,
+              89
+            ]
+          },
+          "margin_px": 35,
+          "file": "frames/oil_bubble-02.png"
+        },
+        {
+          "id": "oil_bubble-03",
+          "start_ms": 150,
+          "duration_ms": 50,
+          "sample_ms": 175.0,
+          "qa": {
+            "visible": 527,
+            "partial_alpha": 303,
+            "colors": 75,
+            "off_palette": null,
+            "orphans": 274,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              32,
+              59,
+              96,
+              91
+            ]
+          },
+          "margin_px": 32,
+          "file": "frames/oil_bubble-03.png"
+        },
+        {
+          "id": "oil_bubble-04",
+          "start_ms": 200,
+          "duration_ms": 50,
+          "sample_ms": 225.0,
+          "qa": {
+            "visible": 467,
+            "partial_alpha": 323,
+            "colors": 44,
+            "off_palette": null,
+            "orphans": 272,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              31,
+              60,
+              97,
+              91
+            ]
+          },
+          "margin_px": 31,
+          "file": "frames/oil_bubble-04.png"
+        },
+        {
+          "id": "oil_bubble-05",
+          "start_ms": 250,
+          "duration_ms": 50,
+          "sample_ms": 275.0,
+          "qa": {
+            "visible": 374,
+            "partial_alpha": 299,
+            "colors": 37,
+            "off_palette": null,
+            "orphans": 273,
+            "l_corners": null,
+            "outline_gaps": null,
+            "bbox": [
+              30,
+              61,
+              98,
+              91
+            ]
+          },
+          "margin_px": 30,
+          "file": "frames/oil_bubble-05.png"
+        }
+      ],
+      "duration_ms": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "hit_frame": null,
+      "dropped_tail_frames": 0,
+      "events": [],
+      "seam": {
+        "frames": 6,
+        "seam": 5.517748,
+        "adjacent_median": 6.995566,
+        "adjacent_p95": 8.752734,
+        "adjacent_max": 8.987016,
+        "seam_over_median": 0.788749,
+        "seam_over_p95": 0.630403,
+        "method": "premultiplied RGBA mean absolute difference (0-255); seam = last -> first"
+      },
+      "hit_on_60hz_tick": true
+    }
+  },
+  "arcs": [],
+  "margin_failures": [],
+  "build_clips": null,
+  "runtime": null,
+  "review": {
+    "oil_splash": "review/oil_splash.png",
+    "oil_bubble": "review/oil_bubble.png"
+  },
+  "qa": {
+    "status": "warn",
+    "method": "fx_build: frames cut at impactMs and sampled mid-frame; codeart_core.qa_pixels per frame against the spec palette (pixel route); slash head progress at each frame; forge_core.seam_report on loops; transparent margin; optional build_animation_clips and fx_verify.mjs runs",
+    "notProven": [
+      "Readability and impact at game scale and in motion: look at review/*.png and play the clips.",
+      "That the effect suits the move it accompanies; the checks prove timing and palette only.",
+      "Vector frames are anti-aliased: partial alpha and blended edges are expected.",
+      "build_animation_clips was not run (--build-clips not given)."
+    ],
+    "checks": [
+      {
+        "id": "partial_alpha",
+        "status": "skipped",
+        "value": null,
+        "threshold": 0
+      },
+      {
+        "id": "off_palette",
+        "status": "skipped",
+        "value": null,
+        "threshold": 0
+      },
+      {
+        "id": "outline_gaps",
+        "status": "skipped",
+        "value": null,
+        "threshold": 0
+      },
+      {
+        "id": "l_corners",
+        "status": "skipped",
+        "value": null,
+        "threshold": 10
+      },
+      {
+        "id": "seam:oil_bubble",
+        "status": "warn",
+        "value": 0.7887,
+        "threshold": [
+          0.8,
+          1.25
+        ]
+      },
+      {
+        "id": "margins",
+        "status": "pass",
+        "value": 0,
+        "threshold": 2
+      },
+      {
+        "id": "timing",
+        "status": "pass",
+        "value": {
+          "oil_splash": 350,
+          "oil_bubble": 300
+        },
+        "threshold": {
+          "oil_splash": 350,
+          "oil_bubble": 300
+        }
+      },
+      {
+        "id": "build_clips",
+        "status": "skipped",
+        "value": null,
+        "threshold": 0
+      },
+      {
+        "id": "runtime_verify",
+        "status": "skipped",
+        "value": null,
+        "threshold": "pass"
+      }
+    ],
+    "inputs": [
+      {
+        "path": "../oil_fx.json",
+        "sha256": "d4f0c33e2d69da89db3f260e0308a774ab4d6a83af1bb186082c771f7d725ea3",
+        "bytes": 2256
+      }
+    ],
+    "outputs": [
+      {
+        "path": "frames/oil_splash-00.png",
+        "sha256": "0e9e8ac0ddf82a2638b245ae3b84d4e3717fe2acc862a0fab7f519fa71e891bb",
+        "bytes": 500
+      },
+      {
+        "path": "frames/oil_splash-01.png",
+        "sha256": "65458376f93c71962e879156988830b17930c2fc7188f9a5db3691a3ef17df78",
+        "bytes": 1496
+      },
+      {
+        "path": "frames/oil_splash-02.png",
+        "sha256": "490d22e7fc48fa37c231f987e49fa82c078bc7247ccd370b42445dcff7babf01",
+        "bytes": 1996
+      },
+      {
+        "path": "frames/oil_splash-03.png",
+        "sha256": "83c1b961c67acb4256ee7da86a64bd777a60ad86d41b15a1bfef52ffb497844e",
+        "bytes": 2338
+      },
+      {
+        "path": "frames/oil_splash-04.png",
+        "sha256": "d510240efacf94aebb2c3edcfe6cf5bd11881b7f3155233940adc3bd11bfaa7d",
+        "bytes": 2747
+      },
+      {
+        "path": "frames/oil_splash-05.png",
+        "sha256": "944317a3c294ab422b8d177c7dbb73dea175391d2a6778ea81401b55291b1f63",
+        "bytes": 2313
+      },
+      {
+        "path": "frames/oil_splash-06.png",
+        "sha256": "3f48f6f25c08de45fca58ab769eaf24e1830f856c40a165e920452546f407a00",
+        "bytes": 2221
+      },
+      {
+        "path": "frames/oil_bubble-00.png",
+        "sha256": "c8bbf796083855d92d9a164de88c0bbdb0ba6bfc4658ba8c58fa520d7f520c59",
+        "bytes": 484
+      },
+      {
+        "path": "frames/oil_bubble-01.png",
+        "sha256": "f567c59dc6260c675f24cff185e57a3289dcffba94908c912a291c37633032f9",
+        "bytes": 906
+      },
+      {
+        "path": "frames/oil_bubble-02.png",
+        "sha256": "3835a82020726354d0663a7883a0dc8585c466081768d7086e349703178e1036",
+        "bytes": 1343
+      },
+      {
+        "path": "frames/oil_bubble-03.png",
+        "sha256": "d6f3f1824fe1489fec3e9b3d97b68357448c97ce8861f0f4b210bc63215c8c81",
+        "bytes": 1542
+      },
+      {
+        "path": "frames/oil_bubble-04.png",
+        "sha256": "b63b743f8c34ed48953d9d9ad874a81fd2433e53a6cc50f746008c8835f340c5",
+        "bytes": 1388
+      },
+      {
+        "path": "frames/oil_bubble-05.png",
+        "sha256": "9992dffc36e511b40abb624e4fa484f89ca2249c64a461fe321380379c386c0f",
+        "bytes": 1176
+      },
+      {
+        "path": "clips.json",
+        "sha256": "c787d03e021bc226ec0494a83def801ab6d0c4549ca31bfb2e3e385a314c0b25",
+        "bytes": 2269
+      }
+    ],
+    "tool": {
+      "name": "codeart2d/fx_build.py",
+      "version": "0.5.0"
+    }
+  }
+}
