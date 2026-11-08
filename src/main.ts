@@ -20,11 +20,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (resizeTimeout) window.clearTimeout(resizeTimeout);
     resizeTimeout = window.setTimeout(() => {
       const nextMode = detectLayoutMode();
-      const prevScale = gameConfig.width;
+      const prevWidth = game.scale.width;
+      const prevHeight = game.scale.height;
       updateRenderScale();
       const nextDims = getTargetDimensions(nextMode);
 
-      if (nextMode !== currentMode || prevScale !== nextDims.width) {
+      if (nextMode !== currentMode || prevWidth !== nextDims.width || prevHeight !== nextDims.height) {
         currentMode = nextMode;
         game.scale.setGameSize(nextDims.width, nextDims.height);
 
