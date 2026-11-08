@@ -1379,8 +1379,29 @@ export class ShopScene extends Phaser.Scene {
       if (!this.daySystem.isPaused) this.triggerChangeOil();
     });
 
+    // Condiment Hotkeys: Z, X, C for Veggies; V, B, N for Sauces
+    this.input.keyboard.on('keydown-Z', () => {
+      if (!this.daySystem.isPaused) this.onVeggieTapped('dua_leo');
+    });
+
+    this.input.keyboard.on('keydown-X', () => {
+      if (!this.daySystem.isPaused) this.onVeggieTapped('dau_bap');
+    });
+
+    this.input.keyboard.on('keydown-C', () => {
+      if (!this.daySystem.isPaused) this.onVeggieTapped('xa_lach');
+    });
+
     this.input.keyboard.on('keydown-V', () => {
-      if (!this.daySystem.isPaused) this.triggerServeVeggieToCustomer();
+      if (!this.daySystem.isPaused) this.onSauceTapped('tuong_ot');
+    });
+
+    this.input.keyboard.on('keydown-B', () => {
+      if (!this.daySystem.isPaused) this.onSauceTapped('tuong_den');
+    });
+
+    this.input.keyboard.on('keydown-N', () => {
+      if (!this.daySystem.isPaused) this.onSauceTapped('tuong_xi_muoi');
     });
   }
 

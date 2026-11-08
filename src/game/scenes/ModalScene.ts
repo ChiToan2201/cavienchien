@@ -1341,10 +1341,10 @@ export class ModalScene extends Phaser.Scene {
         title: '🛎️ Giao Món Nóng Hổi & Nhận Tiền Tip Hậu Hĩnh',
         desc:
           'Khách hàng sẽ lần lượt ghé xe đứng chờ và gọi món:\n\n' +
-          '• 💬 BONG BÓNG YÊU CẦU: Hiển thị hình món ăn và số lượng xiên khách cần.\n\n' +
-          '• ✓ NÚT PHỤC VỤ XANH LÁ: Khi trên khay đã đủ món chín, nút sẽ sáng rực lên!\n\n' +
-          '• 💰 TÍNH TIỀN & TIP: Chạm vào khách hoặc bấm phím [Space] để giao hàng. Phục vụ càng nhanh khách càng vui, tip càng nhiều tiền và tăng sao đánh giá 5★!',
-        tip: '💡 Mẹo: Luôn chiên sẵn 2-3 phần cá viên trước trên khay để khách tới là có giao liền!',
+          '• 💬 BONG BÓNG YÊU CẦU: Hiển thị hình món ăn, số lượng và gia vị khách thích.\n\n' +
+          '• 🥗 RAU & NƯỚC CHẤM: Bấm chọn Dưa leo/Đậu bắp/Xà lách [Z, X, C] và xịt Tương ớt/Đen/Xí muội [V, B, N] theo đúng ý khách để nhận thêm +5.000đ và tip khủng!\n\n' +
+          '• 💰 GIAO HÀNG & TIP: Khi đủ món, chạm vào khách hoặc bấm phím [Space] để giao hàng và nhận đánh giá 5★!',
+        tip: '💡 Mẹo: Phục vụ chuẩn xác cả món chiên + đúng loại rau + đúng loại sốt sẽ nhận danh hiệu 5 Sao và thưởng +5 XP!',
       },
       {
         badge: 'BƯỚC 4: KHÁCH ĐẶC BIỆT',
