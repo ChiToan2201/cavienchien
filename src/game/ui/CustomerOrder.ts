@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import { ActiveCustomer } from '../systems/CustomerSystem';
 import { GameStateManager } from '../managers/GameStateManager';
 import { TASTE_THEME } from '../config/tasteTheme';
+import { getLogicalDimensions } from '../config/display';
 
 export class CustomerOrder extends Phaser.GameObjects.Container {
   private gs: GameStateManager;
   public customer: ActiveCustomer;
+  private isDesktop: boolean;
 
   private charSprite!: Phaser.GameObjects.Image;
   private bubbleBg!: Phaser.GameObjects.Graphics;
@@ -25,6 +27,7 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     super(scene, x, y);
     this.gs = GameStateManager.getInstance();
     this.customer = customer;
+    this.isDesktop = getLogicalDimensions().isDesktop;
 
     this.buildCustomerView(onTapCustomer);
     this.refreshOrderState();
@@ -42,15 +45,18 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
   }
 
   private buildCustomerView(onTapCustomer: (slotIndex: number) => void): void {
+    const charScale = this.isDesktop ? 0.41 : 0.35;
+    const charY = this.isDesktop ? 22 : 18;
+
     // Character sprite registered at 220x280 with `feet` anchor
-    this.charSprite = this.scene.add.image(0, 22, this.customer.textureKey);
-    this.charSprite.setScale(0.41);
+    this.charSprite = this.scene.add.image(0, charY, this.customer.textureKey);
+    this.charSprite.setScale(charScale);
     this.add(this.charSprite);
 
     // Subtle idle breathing animation
     this.scene.tweens.add({
       targets: this.charSprite,
-      y: 19.5,
+      y: charY - 2.5,
       duration: 760 + this.customer.slotIndex * 110,
       yoyo: true,
       repeat: -1,
@@ -60,13 +66,21 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     // Customer Archetype Pill Badge under character
     const isVip = this.customer.archetype.id === 'vip';
     const isBad = this.customer.archetype.id === 'bad';
-    const badgeW = isVip || isBad ? 96 : 88;
+    const badgeW = this.isDesktop
+      ? isVip || isBad ? 96 : 88
+      : isVip || isBad ? 78 : 72;
+    const badgeH = this.isDesktop ? 16 : 14;
+    const badgeY = this.isDesktop ? 53 : 46;
 
     const badgeBg = this.scene.add.graphics();
     badgeBg.fillStyle(this.customer.archetype.badgeColor, 1);
-    badgeBg.fillRoundedRect(-badgeW / 2, 53, badgeW, 16, 6);
-    badgeBg.lineStyle(isVip ? 1.5 : 1, isVip ? 0xfff3b0 : TASTE_THEME.colors.bgBase, isVip ? 0.9 : 0.45);
-    badgeBg.strokeRoundedRect(-badgeW / 2, 53, badgeW, 16, 6);
+    badgeBg.fillRoundedRect(-badgeW / 2, badgeY, badgeW, badgeH, 5);
+    badgeBg.lineStyle(
+      isVip ? 1.5 : 1,
+      isVip ? 0xfff3b0 : TASTE_THEME.colors.bgBase,
+      isVip ? 0.9 : 0.45
+    );
+    badgeBg.strokeRoundedRect(-badgeW / 2, badgeY, badgeW, badgeH, 5);
 
     const displayName = isVip
       ? `👑 ${this.customer.archetype.name}`
@@ -75,9 +89,11 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
         : this.customer.archetype.name;
 
     const nameLbl = this.scene.add
-      .text(0, 61, displayName, {
+      .text(0, badgeY + badgeH / 2, displayName, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: isVip || isBad ? '8.5px' : '9.5px',
+        fontSize: this.isDesktop
+          ? isVip || isBad ? '8.5px' : '9.5px'
+          : isVip || isBad ? '7.5px' : '8.5px',
         fontStyle: '800',
         color: '#ffffff',
       })
@@ -88,24 +104,28 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     this.bubbleBg = this.scene.add.graphics();
     this.add(this.bubbleBg);
 
-    // Order items inside speech bubble (using 256x256 normalized food sprites)
+    // Order items inside speech bubble
     const count = this.customer.orders.length;
-    const spacing = count === 1 ? 0 : count === 2 ? 38 : count === 3 ? 28 : 23;
+    const spacing = this.isDesktop
+      ? count === 1 ? 0 : count === 2 ? 38 : count === 3 ? 28 : 22
+      : count === 1 ? 0 : count === 2 ? 32 : count === 3 ? 24 : 18;
     const startX = -((count - 1) * spacing) / 2;
+    const itemY = this.isDesktop ? -45 : -38;
+    const iconScale = this.isDesktop ? 0.145 : 0.125;
 
     this.customer.orders.forEach((req, idx) => {
       const def = this.gs.getFoodDef(req.foodId);
-      const itemCon = this.scene.add.container(startX + idx * spacing, -45);
+      const itemCon = this.scene.add.container(startX + idx * spacing, itemY);
 
-      const icon = this.scene.add.image(0, -3, def.textureKey).setScale(0.145);
+      const icon = this.scene.add.image(0, -3, def.textureKey).setScale(iconScale);
       const qtyTxt = this.scene.add
-        .text(0, 11, `x${req.quantity}`, {
+        .text(0, this.isDesktop ? 11 : 9, `x${req.quantity}`, {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '10px',
+          fontSize: this.isDesktop ? '10px' : '8.5px',
           fontStyle: '800',
           color: TASTE_THEME.colors.inkDark,
           backgroundColor: '#f3eadb',
-          padding: { left: 4, right: 4, top: 1, bottom: 1 },
+          padding: { left: 3, right: 3, top: 1, bottom: 1 },
         })
         .setOrigin(0.5);
 
@@ -115,16 +135,19 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     });
 
     // Mood emoji + Patience progress bar
+    const moodX = this.isDesktop ? -37 : -30;
+    const moodY = this.isDesktop ? -19 : -16;
     this.moodText = this.scene.add
-      .text(-37, -19, '😄', { fontSize: '12px' })
+      .text(moodX, moodY, '😄', { fontSize: this.isDesktop ? '12px' : '10.5px' })
       .setOrigin(0.5);
     this.patienceBarFill = this.scene.add.graphics();
 
     // Veggie request tag at top of speech bubble
+    const veggieY = this.isDesktop ? -74 : -64;
     this.veggieBadge = this.scene.add
-      .text(0, -74, '', {
+      .text(0, veggieY, '', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '8.5px',
+        fontSize: this.isDesktop ? '8.5px' : '7.5px',
         fontStyle: '800',
         color: '#ffffff',
         backgroundColor: '#1f8a4c',
@@ -136,16 +159,18 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     this.add([this.moodText, this.patienceBarFill, this.veggieBadge]);
 
     // Ready-to-serve CTA pill badge
-    this.serveHintBadge = this.scene.add.container(0, 5);
+    const serveW = this.isDesktop ? 84 : 72;
+    const serveH = this.isDesktop ? 20 : 18;
+    this.serveHintBadge = this.scene.add.container(0, 4);
     const serveBg = this.scene.add.graphics();
     serveBg.fillStyle(TASTE_THEME.colors.success, 1);
-    serveBg.fillRoundedRect(-42, -10, 84, 20, 8);
+    serveBg.fillRoundedRect(-serveW / 2, -serveH / 2, serveW, serveH, 7);
     serveBg.lineStyle(1.5, 0xffffff, 0.9);
-    serveBg.strokeRoundedRect(-42, -10, 84, 20, 8);
+    serveBg.strokeRoundedRect(-serveW / 2, -serveH / 2, serveW, serveH, 7);
     const serveTxt = this.scene.add
       .text(0, 0, '✓ PHỤC VỤ', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '10px',
+        fontSize: this.isDesktop ? '10px' : '8.5px',
         fontStyle: '800',
         color: '#ffffff',
       })
@@ -155,7 +180,7 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
 
     this.scene.tweens.add({
       targets: this.serveHintBadge,
-      y: 3,
+      y: 2,
       duration: 480,
       yoyo: true,
       repeat: -1,
@@ -163,8 +188,10 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
     });
 
     // Hit area covering bubble + character
+    const hitW = this.isDesktop ? 98 : 82;
+    const hitH = this.isDesktop ? 145 : 126;
     const hit = this.scene.add
-      .rectangle(0, -2, 98, 145, 0xffffff, 0)
+      .rectangle(0, -2, hitW, hitH, 0xffffff, 0)
       .setInteractive({ useHandCursor: true });
 
     hit.on('pointerdown', () => {
@@ -187,17 +214,21 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
       }
     });
 
+    const bW = this.isDesktop ? 96 : 82;
+    const bH = this.isDesktop ? 63 : 52;
+    const bTop = this.isDesktop ? -73 : -62;
+
     this.bubbleBg.clear();
     this.bubbleBg.fillStyle(allReady ? 0xf2fbf5 : TASTE_THEME.colors.cardCream, 0.98);
-    this.bubbleBg.fillRoundedRect(-48, -73, 96, 63, 10);
+    this.bubbleBg.fillRoundedRect(-bW / 2, bTop, bW, bH, 9);
     this.bubbleBg.lineStyle(
       allReady ? 2 : 1,
       allReady ? TASTE_THEME.colors.success : TASTE_THEME.colors.borderHairlineLight,
       1
     );
-    this.bubbleBg.strokeRoundedRect(-48, -73, 96, 63, 10);
+    this.bubbleBg.strokeRoundedRect(-bW / 2, bTop, bW, bH, 9);
     // Speech pointer triangle
-    this.bubbleBg.fillTriangle(-6, -10, 6, -10, 0, -2);
+    this.bubbleBg.fillTriangle(-5, bTop + bH, 5, bTop + bH, 0, bTop + bH + 6);
 
     this.serveHintBadge.setVisible(allReady);
 
@@ -208,7 +239,7 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
         this.veggieBadge.setBackgroundColor('#1f8a4c');
         this.veggieBadge.setColor('#ffffff');
       } else {
-        this.veggieBadge.setText('🥒 Cần rau ăn kèm');
+        this.veggieBadge.setText('🥒 Cần rau');
         this.veggieBadge.setBackgroundColor('#d97706');
         this.veggieBadge.setColor('#ffffff');
       }
@@ -240,10 +271,16 @@ export class CustomerOrder extends Phaser.GameObjects.Container {
         : ratio > 0.25
           ? TASTE_THEME.colors.accentAmber
           : TASTE_THEME.colors.danger;
+
+    const pX = this.isDesktop ? -24 : -20;
+    const pY = this.isDesktop ? -22 : -18;
+    const pW = this.isDesktop ? 64 : 52;
+    const pH = this.isDesktop ? 6 : 5;
+
     this.patienceBarFill.clear();
     this.patienceBarFill.fillStyle(0xe5ddd0, 1);
-    this.patienceBarFill.fillRoundedRect(-24, -22, 64, 6, 3);
+    this.patienceBarFill.fillRoundedRect(pX, pY, pW, pH, 2.5);
     this.patienceBarFill.fillStyle(barColor, 1);
-    this.patienceBarFill.fillRoundedRect(-24, -22, Math.max(4, 64 * ratio), 6, 3);
+    this.patienceBarFill.fillRoundedRect(pX, pY, Math.max(3, pW * ratio), pH, 2.5);
   }
 }

@@ -307,42 +307,42 @@ export class ShopScene extends Phaser.Scene {
         }
       }
 
-      // Today's revenue chalkboard pill (Top-Left of Street Counter)
+      // Top Utility Strip: Revenue Chalkboard (`x: 32..152, y: 97..131`)
       const board = this.add.graphics();
-      board.fillStyle(TASTE_THEME.colors.bgBase, 0.92);
-      board.fillRoundedRect(32, 108, 126, 52, 8);
+      board.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
+      board.fillRoundedRect(32, 97, 120, 34, 7);
       board.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      board.strokeRoundedRect(32, 108, 126, 52, 8);
+      board.strokeRoundedRect(32, 97, 120, 34, 7);
 
       this.add
-        .text(95, 122, 'DOANH THU NGÀY', {
+        .text(42, 114, '₫ Doanh thu:', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '9.5px',
           fontStyle: '700',
           color: TASTE_THEME.colors.inkMutedOnDark,
         })
-        .setOrigin(0.5);
+        .setOrigin(0, 0.5);
 
       this.todayRevenueText = this.add
-        .text(95, 142, '0đ', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '15px',
+        .text(142, 114, '0đ', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '13px',
           fontStyle: '800',
           color: '#4ade80',
         })
-        .setOrigin(0.5);
+        .setOrigin(1, 0.5);
 
-      // Veggie Station Widget (Top-Right of Street Counter: `x: 590, y: 134`)
-      const veggieCon = this.add.container(590, 134);
+      // Top Utility Strip: Veggie Station Widget (`x: 514..692, y: 97..131`)
+      const veggieCon = this.add.container(603, 114);
       const vBg = this.add.graphics();
       vBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
-      vBg.fillRoundedRect(-76, -26, 152, 52, 8);
+      vBg.fillRoundedRect(-89, -17, 178, 34, 7);
       vBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      vBg.strokeRoundedRect(-76, -26, 152, 52, 8);
+      vBg.strokeRoundedRect(-89, -17, 178, 34, 7);
       veggieCon.add(vBg);
 
       this.veggieStockText = this.add
-        .text(-12, -10, `🥒 Rau: ${this.gs.state.veggieStock}`, {
+        .text(-50, 0, `🥒 Rau: ${this.gs.state.veggieStock}`, {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '11px',
           fontStyle: '800',
@@ -351,12 +351,12 @@ export class ShopScene extends Phaser.Scene {
         .setOrigin(0.5);
       veggieCon.add(this.veggieStockText);
 
-      // Button: + Nhập rau (15k)
+      // Button: +15k (Restock)
       const restockBtnBg = this.add.graphics();
       restockBtnBg.fillStyle(0x0f766e, 1);
-      restockBtnBg.fillRoundedRect(36, -20, 32, 20, 4);
+      restockBtnBg.fillRoundedRect(-2, -10, 32, 20, 4);
       const restockBtnLbl = this.add
-        .text(52, -10, '+15k', {
+        .text(14, 0, '+15k', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '9px',
           fontStyle: '800',
@@ -364,7 +364,7 @@ export class ShopScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
       const restockHit = this.add
-        .rectangle(52, -10, 34, 22, 0xffffff, 0)
+        .rectangle(14, 0, 34, 22, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       restockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
         e.event.stopPropagation();
@@ -372,12 +372,12 @@ export class ShopScene extends Phaser.Scene {
       });
       veggieCon.add([restockBtnBg, restockBtnLbl, restockHit]);
 
-      // Button: GẮP RAU [Phím V]
+      // Button: GẮP [V]
       const serveVeggieBtnBg = this.add.graphics();
       serveVeggieBtnBg.fillStyle(0x15803d, 1);
-      serveVeggieBtnBg.fillRoundedRect(-70, 7, 140, 20, 4);
+      serveVeggieBtnBg.fillRoundedRect(36, -10, 46, 20, 4);
       const serveVeggieBtnLbl = this.add
-        .text(0, 17, 'GẮP RAU CHO KHÁCH [V]', {
+        .text(59, 0, 'GẮP [V]', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '9px',
           fontStyle: '800',
@@ -385,12 +385,12 @@ export class ShopScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
       const serveVeggieHit = this.add
-        .rectangle(0, 17, 140, 20, 0xffffff, 0)
+        .rectangle(59, 0, 46, 22, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       serveVeggieHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
       veggieCon.add([serveVeggieBtnBg, serveVeggieBtnLbl, serveVeggieHit]);
     } else {
-      this.player = new Player(this, 48, 178);
+      this.player = new Player(this, 36, 176);
       this.add.existing(this.player);
 
       const mobileProps: Array<{ key: string; x: number; y: number; scale: number }> = [
@@ -407,41 +407,42 @@ export class ShopScene extends Phaser.Scene {
         }
       }
 
+      // Mobile Top Utility Strip: Revenue Pill (`x: 16..118, y: 82..104`)
       const board = this.add.graphics();
-      board.fillStyle(TASTE_THEME.colors.bgBase, 0.92);
-      board.fillRoundedRect(18, 90, 76, 40, 6);
+      board.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
+      board.fillRoundedRect(16, 82, 102, 22, 5);
       board.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      board.strokeRoundedRect(18, 90, 76, 40, 6);
+      board.strokeRoundedRect(16, 82, 102, 22, 5);
 
       this.add
-        .text(56, 101, 'DOANH THU', {
+        .text(24, 93, '💰 Doanh thu:', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '8.5px',
           fontStyle: '700',
           color: TASTE_THEME.colors.inkMutedOnDark,
         })
-        .setOrigin(0.5);
+        .setOrigin(0, 0.5);
 
       this.todayRevenueText = this.add
-        .text(56, 117, '0đ', {
-          fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '11.5px',
+        .text(110, 93, '0đ', {
+          fontFamily: TASTE_THEME.fonts.mono,
+          fontSize: '10px',
           fontStyle: '800',
           color: '#4ade80',
         })
-        .setOrigin(0.5);
+        .setOrigin(1, 0.5);
 
-      // Mobile Veggie Station Widget (Opposite to Revenue chalkboard: `x: 350, y: 110`)
-      const mobileVeggieCon = this.add.container(350, 110);
+      // Mobile Top Utility Strip: Veggie Station (`x: 266..404, y: 82..104`)
+      const mobileVeggieCon = this.add.container(335, 93);
       const mvBg = this.add.graphics();
       mvBg.fillStyle(TASTE_THEME.colors.bgBase, 0.94);
-      mvBg.fillRoundedRect(-52, -20, 104, 40, 6);
+      mvBg.fillRoundedRect(-69, -11, 138, 22, 5);
       mvBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      mvBg.strokeRoundedRect(-52, -20, 104, 40, 6);
+      mvBg.strokeRoundedRect(-69, -11, 138, 22, 5);
       mobileVeggieCon.add(mvBg);
 
       this.veggieStockText = this.add
-        .text(-12, -8, `🥒 Rau: ${this.gs.state.veggieStock}`, {
+        .text(-38, 0, `🥒 ${this.gs.state.veggieStock}`, {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '9.5px',
           fontStyle: '800',
@@ -453,17 +454,17 @@ export class ShopScene extends Phaser.Scene {
       // Restock small button (+15k)
       const mRestockBtnBg = this.add.graphics();
       mRestockBtnBg.fillStyle(0x0f766e, 1);
-      mRestockBtnBg.fillRoundedRect(24, -16, 24, 16, 4);
+      mRestockBtnBg.fillRoundedRect(-5, -8, 26, 16, 3);
       const mRestockBtnLbl = this.add
-        .text(36, -8, '+', {
+        .text(8, 0, '+15k', {
           fontFamily: TASTE_THEME.fonts.sans,
-          fontSize: '10px',
+          fontSize: '8px',
           fontStyle: '800',
           color: '#ffffff',
         })
         .setOrigin(0.5);
       const mRestockHit = this.add
-        .rectangle(36, -8, 24, 16, 0xffffff, 0)
+        .rectangle(8, 0, 26, 18, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
         e.event.stopPropagation();
@@ -474,9 +475,9 @@ export class ShopScene extends Phaser.Scene {
       // Serve Veggie button
       const mServeBtnBg = this.add.graphics();
       mServeBtnBg.fillStyle(0x15803d, 1);
-      mServeBtnBg.fillRoundedRect(-46, 5, 92, 14, 3);
+      mServeBtnBg.fillRoundedRect(27, -8, 38, 16, 3);
       const mServeBtnLbl = this.add
-        .text(0, 12, 'GẮP RAU [V]', {
+        .text(46, 0, 'GẮP [V]', {
           fontFamily: TASTE_THEME.fonts.sans,
           fontSize: '8px',
           fontStyle: '800',
@@ -484,7 +485,7 @@ export class ShopScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
       const mServeHit = this.add
-        .rectangle(0, 12, 92, 14, 0xffffff, 0)
+        .rectangle(46, 0, 38, 18, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
       mServeHit.on('pointerdown', () => this.triggerServeVeggieToCustomer());
       mobileVeggieCon.add([mServeBtnBg, mServeBtnLbl, mServeHit]);
@@ -496,15 +497,15 @@ export class ShopScene extends Phaser.Scene {
 
   private buildDay1GuidanceBanner(): void {
     const { width: W, isDesktop } = getLogicalDimensions();
-    const bannerX = isDesktop ? 432 : W / 2;
-    const bannerY = isDesktop ? 104 : 86;
-    const bannerW = isDesktop ? 490 : 380;
-    const bannerH = 24;
+    const bannerX = isDesktop ? 332 : W / 2;
+    const bannerY = isDesktop ? 114 : 93;
+    const bannerW = isDesktop ? 340 : 380;
+    const bannerH = isDesktop ? 30 : 22;
 
     this.tutorialHintContainer = this.add.container(bannerX, bannerY);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x1a120b, 0.9);
+    bg.fillStyle(0x1a120b, 0.94);
     bg.fillRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 6);
     bg.lineStyle(1, TASTE_THEME.colors.accentAmber, 0.7);
     bg.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 6);
@@ -538,17 +539,23 @@ export class ShopScene extends Phaser.Scene {
       return;
     }
 
+    if (!this.isDesktop && this.daySystem.phase === 'selling') {
+      // On mobile selling phase, keep the top utility bar clear for Revenue and Veggie widgets
+      this.tutorialHintContainer.setVisible(false);
+      return;
+    }
+
     this.tutorialHintContainer.setVisible(true);
 
     if (this.daySystem.phase === 'prep') {
-      this.tutorialHintText.setText('💡 Ngày 1: Nhập hàng, kiểm tra bình Gas rồi nhấn [MỞ BÁN NGAY] (Space)!');
+      this.tutorialHintText.setText('💡 Ngày 1: Nhập hàng, kiểm tra Gas rồi nhấn [MỞ BÁN NGAY]!');
       return;
     }
 
     // In Selling Phase
     const hasReadyFood = this.cookingSystem.slots.some((s) => s.status === 'ready');
     if (hasReadyFood) {
-      this.tutorialHintText.setText('🔥 Cá viên đã chín vàng! Chạm chảo hoặc bấm [Space] để vớt ngay lên khay!');
+      this.tutorialHintText.setText('🔥 Cá viên đã chín vàng! Chạm chảo hoặc bấm [Space] để vớt ngay!');
       return;
     }
 
@@ -560,17 +567,17 @@ export class ShopScene extends Phaser.Scene {
       }
     }
     if (canServeAny) {
-      this.tutorialHintText.setText('🛎️ Đã đủ món chín! Chạm vào khách hoặc bấm [Space] để giao hàng nhận tiền!');
+      this.tutorialHintText.setText('🛎️ Đã đủ món chín! Chạm vào khách hoặc bấm [Space] để giao hàng!');
       return;
     }
 
     const hasActiveCust = this.customerSystem.activeCustomers.some((c) => c !== null);
     if (hasActiveCust) {
-      this.tutorialHintText.setText('🍳 Khách đang đợi! Chạm vào khay món ở tủ kính bên phải (phím 1..6) để chiên!');
+      this.tutorialHintText.setText('🍳 Khách đang đợi! Chạm vào khay món tủ kính (phím 1..6) để chiên!');
       return;
     }
 
-    this.tutorialHintText.setText('💡 Mẹo Ngày 1: Bạn có thể chiên sẵn 2-3 phần cá viên trước để đón khách siêu tốc!');
+    this.tutorialHintText.setText('💡 Mẹo Ngày 1: Bạn có thể chiên sẵn 2-3 phần cá viên trước!');
   }
 
   private buildTwelveTraysGrid(): void {
@@ -1145,8 +1152,11 @@ export class ShopScene extends Phaser.Scene {
     const res = this.gs.refillGas();
     if (!res.ok && res.reason) {
       this.showToast(res.reason, TASTE_THEME.colors.danger);
-    } else {
-      this.showToast('⛽ Đã bơm đầy bình Gas chuẩn bị mở bán!', TASTE_THEME.colors.success);
+    } else if (res.ok && res.cost) {
+      this.showToast(
+        `⛽ Đã đổi bình Gas mới đầy ắp (-${this.gs.formatCurrency(res.cost)})!`,
+        TASTE_THEME.colors.success
+      );
       this.refreshGasUI();
     }
   }
@@ -1310,12 +1320,12 @@ export class ShopScene extends Phaser.Scene {
     bg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
     bg.lineBetween(0, navY, W, navY);
 
-    const tabs: Array<{ id: ModalTab; icon: string; label: string; dotColor: number }> = [
-      { id: 'shop', icon: '🏪', label: 'Thực Đơn Món', dotColor: TASTE_THEME.colors.accentPrimary },
-      { id: 'upgrade', icon: '⚡', label: 'Nâng Cấp Quán', dotColor: TASTE_THEME.colors.accentAmber },
-      { id: 'mission', icon: '📜', label: 'Nhiệm Vụ Ngày', dotColor: TASTE_THEME.colors.successLight },
-      { id: 'inventory', icon: '❄️', label: 'Kho Nguyên Liệu', dotColor: TASTE_THEME.colors.infoTeal },
-      { id: 'achievement', icon: '🏆', label: 'Thành Tựu', dotColor: TASTE_THEME.colors.accentGold },
+    const tabs: Array<{ id: ModalTab; icon: string; label: string; mobileLabel: string; dotColor: number }> = [
+      { id: 'shop', icon: '🏪', label: 'Thực Đơn Món', mobileLabel: 'Thực Đơn', dotColor: TASTE_THEME.colors.accentPrimary },
+      { id: 'upgrade', icon: '⚡', label: 'Nâng Cấp Quán', mobileLabel: 'Nâng Cấp', dotColor: TASTE_THEME.colors.accentAmber },
+      { id: 'mission', icon: '📜', label: 'Nhiệm Vụ Ngày', mobileLabel: 'Nhiệm Vụ', dotColor: TASTE_THEME.colors.successLight },
+      { id: 'inventory', icon: '❄️', label: 'Kho Nguyên Liệu', mobileLabel: 'Kho Hàng', dotColor: TASTE_THEME.colors.infoTeal },
+      { id: 'achievement', icon: '🏆', label: 'Thành Tựu', mobileLabel: 'Thành Tựu', dotColor: TASTE_THEME.colors.accentGold },
     ];
 
     const gap = this.isDesktop ? 14 : 6;
@@ -1358,7 +1368,7 @@ export class ShopScene extends Phaser.Scene {
         con.add([g, lbl]);
       } else {
         const ic = this.add.text(0, -8, tab.icon, { fontSize: '15px' }).setOrigin(0.5);
-        const shortLbl = tab.label.split(' ').slice(0, 2).join(' ');
+        const shortLbl = tab.mobileLabel;
         const lbl = this.add
           .text(0, 10, shortLbl, {
             fontFamily: TASTE_THEME.fonts.sans,
@@ -1656,13 +1666,18 @@ export class ShopScene extends Phaser.Scene {
     const existing = this.customerViews.get(cust.slotIndex);
     if (existing) existing.destroy();
 
-    const slotX = this.isDesktop ? 238 + cust.slotIndex * 116 : 132 + cust.slotIndex * 82;
-    const slotY = this.isDesktop ? 202 : 162;
+    const maxCust = this.gs.getMaxCustomerQueue();
+    const slotX = this.isDesktop
+      ? 238 + cust.slotIndex * 116
+      : maxCust <= 3
+        ? 126 + cust.slotIndex * 92
+        : 112 + cust.slotIndex * 72;
+    const slotY = this.isDesktop ? 214 : 172;
 
     const view = new CustomerOrder(this, slotX, slotY, cust, (clickedSlot) => {
       this.onCustomerTapped(clickedSlot);
     });
-    if (this.isDesktop) view.setScale(1.08);
+    if (this.isDesktop) view.setScale(1.04);
     this.add.existing(view);
     this.customerViews.set(cust.slotIndex, view);
   }

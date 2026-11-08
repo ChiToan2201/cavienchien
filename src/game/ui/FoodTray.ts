@@ -68,25 +68,26 @@ export class FoodTray extends Phaser.GameObjects.Container {
     this.foodSprite.setScale(scale);
     this.add(this.foodSprite);
 
-    // Bottom Left/Center Name + Price (`cards.md` clean footer)
+    // Bottom Footer: Name on left, Price on right (`cards.md` clean cohesive baseline)
+    const footerY = h / 2 - (isCompact ? 11 : 12);
     this.nameText = this.scene.add
-      .text(0, h / 2 - (isCompact ? 11 : 13), this.foodDef.shortName, {
+      .text(-w / 2 + 8, footerY, this.foodDef.shortName, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: isCompact ? '10.5px' : '12px',
+        fontSize: isCompact ? '10px' : '11.5px',
         fontStyle: '800',
         color: TASTE_THEME.colors.inkDark,
       })
-      .setOrigin(0.5);
+      .setOrigin(0, 0.5);
     this.add(this.nameText);
 
     this.priceText = this.scene.add
-      .text(-w / 2 + 8, h / 2 - (isCompact ? 23 : 27), `${(this.foodDef.sellPrice / 1000).toFixed(0)}K`, {
+      .text(w / 2 - 8, footerY, `${(this.foodDef.sellPrice / 1000).toFixed(0)}K`, {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: isCompact ? '9px' : '10px',
-        fontStyle: '700',
-        color: TASTE_THEME.colors.inkMuted,
+        fontSize: isCompact ? '9.5px' : '11px',
+        fontStyle: '800',
+        color: '#b45309',
       })
-      .setOrigin(0, 0.5);
+      .setOrigin(1, 0.5);
     this.add(this.priceText);
 
     // Top-right badge: Cooked Stock on tray (ready to serve)
@@ -116,13 +117,13 @@ export class FoodTray extends Phaser.GameObjects.Container {
 
     // Status pill (ĐANG CHIÊN / CHẠM CHIÊN / HẾT KHO)
     this.statusTag = this.scene.add
-      .text(0, 4, '', {
+      .text(0, isCompact ? -1 : 2, '', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: isCompact ? '9px' : '10px',
+        fontSize: isCompact ? '8.5px' : '10px',
         fontStyle: '800',
         color: '#ffffff',
         backgroundColor: '#d9381e',
-        padding: { left: 6, right: 6, top: 2, bottom: 2 },
+        padding: { left: 5, right: 5, top: 2, bottom: 2 },
       })
       .setOrigin(0.5)
       .setVisible(false);

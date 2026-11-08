@@ -97,16 +97,16 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(this.xpFill);
 
     // Day & Live 6-Minute Countdown Pill (`game-ui-design` Cooldown/Timer Indicator)
-    this.drawStatPill(gut + 52, 9, 174, 46, TASTE_THEME.colors.accentPrimary);
-    this.dayText = this.scene.add.text(gut + 64, 14, 'Ngày 1', {
+    this.drawStatPill(70, 12, 160, 40, TASTE_THEME.colors.accentPrimary);
+    this.dayText = this.scene.add.text(82, 16, 'Ngày 1', {
       fontFamily: TASTE_THEME.fonts.display,
-      fontSize: '16px',
+      fontSize: '15px',
       fontStyle: 'bold',
       color: TASTE_THEME.colors.inkOnDark,
     });
-    this.timeText = this.scene.add.text(gut + 64, 33, '🕒 Chuẩn bị • 06:00', {
+    this.timeText = this.scene.add.text(82, 33, '🕒 06:00', {
       fontFamily: TASTE_THEME.fonts.mono,
-      fontSize: '11.5px',
+      fontSize: '11px',
       fontStyle: '700',
       color: TASTE_THEME.colors.inkGold,
     });
@@ -114,25 +114,25 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add([this.dayText, this.timeText, this.timeBarFill]);
 
     // 1. Money Pill
-    this.drawStatPill(258, 13, 176, 38, TASTE_THEME.colors.accentGold);
+    this.drawStatPill(238, 12, 160, 40, TASTE_THEME.colors.accentGold);
     const coinBadge = this.scene.add.graphics();
     coinBadge.fillStyle(TASTE_THEME.colors.accentGold, 0.18);
-    coinBadge.fillCircle(278, 32, 11);
+    coinBadge.fillCircle(256, 32, 10);
     this.add(coinBadge);
 
     const coinSym = this.scene.add
-      .text(278, 32, '₫', {
+      .text(256, 32, '₫', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '13.5px',
+        fontSize: '13px',
         fontStyle: 'bold',
         color: TASTE_THEME.colors.inkGold,
       })
       .setOrigin(0.5);
 
     this.moneyText = this.scene.add
-      .text(358, 32, '350.000đ', {
+      .text(330, 32, '350.000đ', {
         fontFamily: TASTE_THEME.fonts.mono,
-        fontSize: '15px',
+        fontSize: '14.5px',
         fontStyle: '800',
         color: TASTE_THEME.colors.inkOnDark,
       })
@@ -140,24 +140,24 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add([coinSym, this.moneyText]);
 
     // 2. Diamond Pill
-    this.drawStatPill(444, 13, 102, 38, TASTE_THEME.colors.infoTeal);
-    const diaIcon = this.scene.add.text(464, 32, '💎', { fontSize: '13.5px' }).setOrigin(0.5);
+    this.drawStatPill(406, 12, 96, 40, TASTE_THEME.colors.infoTeal);
+    const diaIcon = this.scene.add.text(424, 32, '💎', { fontSize: '13px' }).setOrigin(0.5);
     this.diamondText = this.scene.add
-      .text(506, 32, '50', {
+      .text(464, 32, '50', {
         fontFamily: TASTE_THEME.fonts.mono,
-        fontSize: '15px',
+        fontSize: '14.5px',
         fontStyle: '800',
         color: TASTE_THEME.colors.inkOnDark,
       })
       .setOrigin(0.5);
     this.add([diaIcon, this.diamondText]);
 
-    // 3. Warehouse Stock Glance Pill (`game-ui-design`: Critical end-of-day resource always visible!)
-    this.drawStatPill(556, 13, 152, 38, TASTE_THEME.colors.successLight);
+    // 3. Warehouse Stock Glance Pill
+    this.drawStatPill(510, 12, 144, 40, TASTE_THEME.colors.successLight);
     this.stockText = this.scene.add
-      .text(632, 32, '❄️ Kho: 115 phần', {
+      .text(582, 32, '❄️ Kho: 115 phần', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '12.5px',
+        fontSize: '12px',
         fontStyle: '800',
         color: TASTE_THEME.colors.inkOnDark,
       })
@@ -165,23 +165,24 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(this.stockText);
 
     // 4. Rating Pill
-    this.drawStatPill(718, 13, 168, 38, TASTE_THEME.colors.accentAmber);
+    this.drawStatPill(662, 12, 140, 40, TASTE_THEME.colors.accentAmber);
     this.ratingText = this.scene.add
-      .text(802, 32, '★ 4.5 (12)', {
+      .text(732, 32, '★ 4.5 (12)', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '13px',
+        fontSize: '12.5px',
         fontStyle: '700',
         color: TASTE_THEME.colors.inkGold,
       })
       .setOrigin(0.5);
     this.add(this.ratingText);
 
-    // Keyboard shortcut hint
+    // 5. Hotkey Shortcut Pill (strictly aligned in x: 810..946, 0 collision with buttons!)
+    this.drawStatPill(810, 12, 136, 40, TASTE_THEME.colors.slateNeutral);
     const hotkeyText = this.scene.add
-      .text(965, 32, '[Space] Mở bán / Vớt\n[1-9] Chiên nhanh', {
+      .text(878, 32, '[Space] Bán/Vớt\n[1-9] Chiên', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '11px',
-        fontStyle: '600',
+        fontSize: '10.5px',
+        fontStyle: '700',
         color: TASTE_THEME.colors.inkMutedOnDark,
         align: 'center',
         lineSpacing: 2,
@@ -194,9 +195,9 @@ export class HUD extends Phaser.GameObjects.Container {
     const summaryW = 96;
     const tutorialW = 104;
     const btnGap = 8;
-    const settingsCenterX = W - gut - settingsW / 2;
-    const summaryCenterX = settingsCenterX - settingsW / 2 - btnGap - summaryW / 2;
-    const tutorialCenterX = summaryCenterX - summaryW / 2 - btnGap - tutorialW / 2;
+    const settingsCenterX = W - gut - settingsW / 2; // 1215
+    const summaryCenterX = settingsCenterX - settingsW / 2 - btnGap - summaryW / 2; // 1114
+    const tutorialCenterX = summaryCenterX - summaryW / 2 - btnGap - tutorialW / 2; // 1006
 
     this.createTopButton(tutorialCenterX, 32, tutorialW, 38, '📖 Hướng dẫn', false, () => {
       SoundManager.playPop();
@@ -269,30 +270,30 @@ export class HUD extends Phaser.GameObjects.Container {
     this.timeBarFill = this.scene.add.graphics();
     this.add([this.xpFill, this.timeBarFill]);
 
-    this.dayText = this.scene.add.text(gut + 42, 6, 'Ngày 1', {
+    this.dayText = this.scene.add.text(gut + 40, 7, 'Ngày 1', {
       fontFamily: TASTE_THEME.fonts.display,
-      fontSize: '13.5px',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: TASTE_THEME.colors.inkOnDark,
     });
-    this.timeText = this.scene.add.text(gut + 42, 22, '🕒 06:00', {
+    this.timeText = this.scene.add.text(gut + 40, 23, '🕒 06:00', {
       fontFamily: TASTE_THEME.fonts.mono,
-      fontSize: '10.5px',
+      fontSize: '10px',
       fontStyle: '700',
       color: TASTE_THEME.colors.inkGold,
     });
-    this.ratingText = this.scene.add.text(gut + 42, 38, '★ 4.5 (12)', {
+    this.ratingText = this.scene.add.text(gut + 40, 39, '★ 4.5 (12)', {
       fontFamily: TASTE_THEME.fonts.sans,
-      fontSize: '10.5px',
+      fontSize: '9.5px',
       fontStyle: '700',
       color: TASTE_THEME.colors.inkGold,
     });
     this.add([this.dayText, this.timeText, this.ratingText]);
 
-    // Compact Money & Warehouse Stock pills
-    this.drawStatPill(138, 7, 128, 21, TASTE_THEME.colors.accentGold);
+    // Compact Money & Warehouse Stock pills (strictly x: 152..278)
+    this.drawStatPill(152, 7, 126, 21, TASTE_THEME.colors.accentGold);
     this.moneyText = this.scene.add
-      .text(202, 17.5, '350.000đ', {
+      .text(215, 17.5, '350.000đ', {
         fontFamily: TASTE_THEME.fonts.mono,
         fontSize: '11.5px',
         fontStyle: '800',
@@ -301,35 +302,36 @@ export class HUD extends Phaser.GameObjects.Container {
       .setOrigin(0.5);
     this.add(this.moneyText);
 
-    this.drawStatPill(138, 31, 128, 20, TASTE_THEME.colors.infoTeal);
+    this.drawStatPill(152, 31, 126, 20, TASTE_THEME.colors.infoTeal);
     this.diamondText = this.scene.add
-      .text(202, 41, '💎 50 • ❄️ 115', {
+      .text(215, 41, '💎 50 • ❄️ 115', {
         fontFamily: TASTE_THEME.fonts.sans,
-        fontSize: '10.5px',
+        fontSize: '10px',
         fontStyle: '700',
         color: TASTE_THEME.colors.inkOnDark,
       })
       .setOrigin(0.5);
     this.add(this.diamondText);
 
-    // Right Action Buttons aligned strictly to `W - gut` (`420 - 12 = 408`)
-    const btnW = 46;
-    const gap = 4;
-    const settingsX = W - gut - btnW / 2;
-    const summaryX = settingsX - btnW - gap;
-    const tutorialX = summaryX - btnW - gap;
+    // Right Action Buttons (strictly x: 288..408, 0 overlap with pills!)
+    const btnW = 36;
+    const btnH = 42;
+    const gap = 6;
+    const settingsX = W - gut - btnW / 2; // 390
+    const summaryX = settingsX - btnW - gap; // 348
+    const tutorialX = summaryX - btnW - gap; // 306
 
-    this.createTopButton(tutorialX, 29, btnW, 40, '📖\nHD', false, () => {
+    this.createTopButton(tutorialX, 29, btnW, btnH, '📖\nHD', false, () => {
       SoundManager.playPop();
       if (onOpenTutorial) onOpenTutorial();
     });
 
-    this.createTopButton(summaryX, 29, btnW, 40, '📊\nBáo cáo', false, () => {
+    this.createTopButton(summaryX, 29, btnW, btnH, '📊\nBC', false, () => {
       SoundManager.playPop();
       onOpenSummary();
     });
 
-    this.createTopButton(settingsX, 29, btnW, 40, '⚙️\nCài đặt', true, () => {
+    this.createTopButton(settingsX, 29, btnW, btnH, '⚙️\nCài', true, () => {
       SoundManager.playPop();
       onOpenSettings();
     });

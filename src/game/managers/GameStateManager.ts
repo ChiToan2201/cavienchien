@@ -352,12 +352,13 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
     return { count: wastedCount, cost: wastedCost };
   }
 
-  public refillGas(): { ok: boolean; reason?: string } {
+  public refillGas(): { ok: boolean; cost?: number; reason?: string } {
     if (this.state.gas >= this.state.maxGas) {
       return { ok: false, reason: 'Bình gas đang đầy!' };
     }
     const missing = this.state.maxGas - this.state.gas;
-    const cost = Math.max(10000, Math.round(missing * 450));
+    // Tăng giá nhập gas: 950đ mỗi 1% gas (tương đương 95.000đ khi cạn bình, tối thiểu 20.000đ)
+    const cost = Math.max(20000, Math.round(missing * 950));
     if (!this.spendMoney(cost)) {
       return { ok: false, reason: `Không đủ ${this.formatCurrency(cost)} để đổi gas!` };
     }
@@ -365,7 +366,7 @@ export class GameStateManager extends Phaser.Events.EventEmitter {
     this.state.gas = this.state.maxGas;
     SoundManager.playPop();
     this.emit('state-changed');
-    return { ok: true };
+    return { ok: true, cost };
   }
 
   public restockIngredient(foodId: string): { ok: boolean; reason?: string } {

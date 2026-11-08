@@ -29,7 +29,7 @@ export class CookingSystem extends Phaser.Events.EventEmitter {
         elapsedMs: 0,
         durationMs: 0,
         burnElapsedMs: 0,
-        burnLimitMs: 9000,
+        burnLimitMs: 5000,
       });
     }
   }
@@ -112,7 +112,7 @@ export class CookingSystem extends Phaser.Events.EventEmitter {
     const oilMultiplier = this.gs.getOilCookingMultiplier();
     targetSlot.durationMs = Math.round(baseDuration * oilMultiplier);
     targetSlot.burnElapsedMs = 0;
-    targetSlot.burnLimitMs = Math.max(7500, Math.round(targetSlot.durationMs * 2.4));
+    targetSlot.burnLimitMs = 5000; // Thời gian sau khi chín đến khi cháy khét rút ngắn còn 5 giây
 
     SoundManager.playSizzle();
     this.gs.emit('state-changed');

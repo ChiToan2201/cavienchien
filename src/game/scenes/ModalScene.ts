@@ -476,6 +476,11 @@ export class ModalScene extends Phaser.Scene {
         const res = this.gs.refillGas();
         if (!res.ok && res.reason) {
           this.shopScene.showToast(res.reason, TASTE_THEME.colors.danger);
+        } else if (res.ok && res.cost) {
+          this.shopScene.showToast(
+            `⛽ Đã đổi bình Gas mới (-${this.gs.formatCurrency(res.cost)})!`,
+            TASTE_THEME.colors.success
+          );
         }
         this.renderCurrentTab();
       }
@@ -1327,7 +1332,7 @@ export class ModalScene extends Phaser.Scene {
           '• 2. QUAN SÁT THANH TIẾN ĐỘ DẦU SÔI:\n' +
           '   - 🟡 Đang sôi: Chưa chín, vớt sớm khách sẽ chê!\n' +
           '   - 🟢 CHÍN VÀNG GIÒN: Vớt ngay lúc này để nhận thưởng +15 XP!\n' +
-          '   - 🔴 CHÁY KHÉT: Ngâm quá lâu trong dầu sẽ khét đen, phải đổ bỏ!',
+          '   - 🔴 CHÁY KHÉT: Sau khi chín chỉ có 5 giây để vớt trước khi bị khét đen, phải đổ bỏ!',
         tip: '💡 Mẹo: Bấm trực tiếp vào chảo dầu hoặc phím [Space] để vớt nhanh mẻ chín lên khay!',
       },
       {
