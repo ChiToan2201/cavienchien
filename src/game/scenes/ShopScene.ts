@@ -583,16 +583,16 @@ export class ShopScene extends Phaser.Scene {
   private buildTwelveTraysGrid(): void {
     const cols = 3;
     if (this.isDesktop) {
-      // Desktop Right Showcase (`x: 718..1260`, width `542`, `y: 122..644`)
+      // Desktop Right Showcase (`x: 718..1260`, width `542`, upper grid `y: 134..486`)
       const trayW = 162;
-      const trayH = 114;
+      const trayH = 82;
       const gapX = 12;
-      const gapY = 11;
+      const gapY = 8;
 
       const totalGridW = cols * trayW + (cols - 1) * gapX; // 510px
       const panelCenterX = 718 + 542 / 2; // 989
       const startX = panelCenterX - totalGridW / 2 + trayW / 2;
-      const startY = 191;
+      const startY = 175;
 
       INITIAL_FOODS.forEach((foodDef, index) => {
         const col = index % cols;
@@ -607,16 +607,16 @@ export class ShopScene extends Phaser.Scene {
         this.trays.set(foodDef.id, tray);
       });
     } else {
-      // Mobile Portrait 3x4 Grid (`x: 12..408`, width `396`, `y: 238..544`)
-      const trayW = 122;
-      const trayH = 68;
+      // Mobile Portrait 3x4 Grid (`x: 12..408`, width `396`, `y: 239..486`)
+      const trayW = 120;
+      const trayH = 58;
       const gapX = 7;
-      const gapY = 6;
+      const gapY = 5;
 
-      const totalGridW = cols * trayW + (cols - 1) * gapX; // 380px
+      const totalGridW = cols * trayW + (cols - 1) * gapX; // 374px
       const { width: screenW } = getLogicalDimensions();
       const startX = (screenW - totalGridW) / 2 + trayW / 2;
-      const startY = 280;
+      const startY = 268;
 
       INITIAL_FOODS.forEach((foodDef, index) => {
         const col = index % cols;
