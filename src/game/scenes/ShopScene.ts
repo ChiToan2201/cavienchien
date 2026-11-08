@@ -737,18 +737,46 @@ export class ShopScene extends Phaser.Scene {
 
       this.add.existing(stationCon);
     } else {
-      // Mobile Portrait Condiment Station (`x: 12..408, y: 492..546`, width 396, height 54)
+      // Mobile Portrait Condiment Station (`x: 12..408, y: 490..550`, width 396, height 60)
       const { width: screenW } = getLogicalDimensions();
       const gut = 12;
       const cardW = screenW - gut * 2;
-      const mCon = this.add.container(gut, 492);
+      const mCon = this.add.container(gut, 490);
 
       const mBg = this.add.graphics();
       mBg.fillStyle(0x181411, 0.96);
-      mBg.fillRoundedRect(0, 0, cardW, 54, 8);
+      mBg.fillRoundedRect(0, 0, cardW, 60, 8);
       mBg.lineStyle(1, TASTE_THEME.colors.borderHairlineDark, 1);
-      mBg.strokeRoundedRect(0, 0, cardW, 54, 8);
+      mBg.strokeRoundedRect(0, 0, cardW, 60, 8);
       mCon.add(mBg);
+
+      // Top Header: Veggie Stock Indicator & Restock Button
+      this.veggieStockText = this.add.text(8, 7, `🥒 Kho: ${this.gs.state.veggieStock}/40`, {
+        fontFamily: TASTE_THEME.fonts.sans,
+        fontSize: '9.5px',
+        fontStyle: '800',
+        color: this.gs.state.veggieStock <= 3 ? '#ef4444' : '#a7f3d0',
+      });
+
+      const mRestockBg = this.add.graphics();
+      mRestockBg.fillStyle(0x0f766e, 1);
+      mRestockBg.fillRoundedRect(cardW - 74, 4, 68, 17, 4);
+      const mRestockTxt = this.add
+        .text(cardW - 40, 12, '+ Nhập 15k', {
+          fontFamily: TASTE_THEME.fonts.sans,
+          fontSize: '8.5px',
+          fontStyle: '800',
+          color: '#ffffff',
+        })
+        .setOrigin(0.5);
+      const mRestockHit = this.add
+        .rectangle(cardW - 40, 12, 70, 20, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      mRestockHit.on('pointerdown', (e: Phaser.Input.Pointer) => {
+        e.event.stopPropagation();
+        this.triggerRestockVeggie();
+      });
+      mCon.add([this.veggieStockText, mRestockBg, mRestockTxt, mRestockHit]);
 
       // 3 Veggie mini buttons + 3 Sauce mini buttons
       const miniButtons: Array<{ label: string; action: () => void; color: number }> = [
@@ -765,15 +793,15 @@ export class ShopScene extends Phaser.Scene {
         const bx = 6 + i * btnW;
         const bBg = this.add.graphics();
         bBg.fillStyle(0x27211b, 1);
-        bBg.fillRoundedRect(bx, 6, btnW - 4, 42, 6);
+        bBg.fillRoundedRect(bx, 24, btnW - 4, 30, 5);
         bBg.lineStyle(1, b.color, 0.8);
-        bBg.strokeRoundedRect(bx, 6, btnW - 4, 42, 6);
+        bBg.strokeRoundedRect(bx, 24, btnW - 4, 30, 5);
         mCon.add(bBg);
 
         const bTxt = this.add
-          .text(bx + (btnW - 4) / 2, 27, b.label, {
+          .text(bx + (btnW - 4) / 2, 39, b.label, {
             fontFamily: TASTE_THEME.fonts.sans,
-            fontSize: '10px',
+            fontSize: '9.5px',
             fontStyle: '800',
             color: '#ffffff',
           })
@@ -781,7 +809,7 @@ export class ShopScene extends Phaser.Scene {
         mCon.add(bTxt);
 
         const bHit = this.add
-          .rectangle(bx + (btnW - 4) / 2, 27, btnW - 4, 42, 0xffffff, 0)
+          .rectangle(bx + (btnW - 4) / 2, 39, btnW - 4, 30, 0xffffff, 0)
           .setInteractive({ useHandCursor: true });
         bHit.on('pointerdown', () => b.action());
         mCon.add(bHit);
@@ -1669,6 +1697,8 @@ export class ShopScene extends Phaser.Scene {
       const view = this.customerViews.get(cust.slotIndex);
       if (view) {
         view.refreshOrderState();
+        this.tweens.killTweensOf(view);
+        view.setScale(this.isDesktop ? 1.04 : 1.0);
         this.tweens.add({
           targets: view,
           scale: this.isDesktop ? 1.09 : 1.05,
@@ -1682,6 +1712,8 @@ export class ShopScene extends Phaser.Scene {
       const view = this.customerViews.get(cust.slotIndex);
       if (view) {
         view.refreshOrderState();
+        this.tweens.killTweensOf(view);
+        view.setScale(this.isDesktop ? 1.04 : 1.0);
         this.tweens.add({
           targets: view,
           scale: this.isDesktop ? 1.09 : 1.05,

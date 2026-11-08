@@ -334,6 +334,10 @@ export class CustomerSystem extends Phaser.Events.EventEmitter {
       starRating = Math.max(1.0, starRating - 1.5); // Dầu đen khét bị trừ sao nặng
     }
 
+    if (missedVeggie || missedSauce) {
+      starRating = Math.max(1.0, starRating - 0.5); // Quên rau hoặc nước chấm bị trừ 0.5 sao
+    }
+
     this.gs.addRating(starRating);
 
     SoundManager.playCash();

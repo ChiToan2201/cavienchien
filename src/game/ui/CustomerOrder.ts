@@ -5,12 +5,12 @@ import { TASTE_THEME } from '../config/tasteTheme';
 import { getLogicalDimensions } from '../config/display';
 
 function getVeggieLabel(type: VeggieType, done: boolean): string {
-  const name = type === 'dua_leo' ? '🥒 Dưa leo' : type === 'dau_bap' ? '🫑 Đậu bắp' : '🥗 Xà lách';
+  const name = type === 'dua_leo' ? '🥒 Dưa' : type === 'dau_bap' ? '🫑 Bắp' : '🥗 Lách';
   return done ? `${name} ✓` : name;
 }
 
 function getSauceLabel(type: SauceType, done: boolean): string {
-  const name = type === 'tuong_ot' ? '🌶️ T.Ớt' : type === 'tuong_den' ? '🥢 T.Đen' : '🍑 Xí muội';
+  const name = type === 'tuong_ot' ? '🌶️ Ớt' : type === 'tuong_den' ? '🥢 Đen' : '🍑 XíM';
   return done ? `${name} ✓` : name;
 }
 
